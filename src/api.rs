@@ -249,8 +249,8 @@ fn cbox_decrypt(c_sess:       *mut CBoxSession,
 
 #[no_mangle]
 pub unsafe extern
-fn cbox_fingerprint_local(s: *const CBoxSession, buf: *mut *mut CBoxVec) {
-    let fp = (*s).sess.local_identity().fingerprint();
+fn cbox_fingerprint_local(c_box: *const CBox, buf: *mut *mut CBoxVec) {
+    let fp = (*c_box).ident.public_key.fingerprint();
     *buf = CBoxVec::from_vec(fp.into_bytes());
 }
 
