@@ -222,10 +222,10 @@ fn cbox_session_close(c_sess: *mut CBoxSession) {
 
 #[no_mangle]
 pub unsafe extern
-fn cbox_session_encrypt(c_sess:      *mut CBoxSession,
-                        c_plain:     *const uint8_t,
-                        c_plain_len: uint32_t,
-                        c_cipher:    *mut *mut CBoxVec)
+fn cbox_encrypt(c_sess:      *mut CBoxSession,
+                c_plain:     *const uint8_t,
+                c_plain_len: uint32_t,
+                c_cipher:    *mut *mut CBoxVec)
 {
     let sref   = &mut *c_sess;
     let plain  = slice::from_raw_parts(c_plain, c_plain_len as usize);
@@ -235,10 +235,10 @@ fn cbox_session_encrypt(c_sess:      *mut CBoxSession,
 
 #[no_mangle]
 pub unsafe extern
-fn cbox_session_decrypt(c_sess:       *mut CBoxSession,
-                        c_cipher:     *const uint8_t,
-                        c_cipher_len: uint32_t,
-                        c_plain:      *mut *mut CBoxVec) -> CBoxResult
+fn cbox_decrypt(c_sess:       *mut CBoxSession,
+                c_cipher:     *const uint8_t,
+                c_cipher_len: uint32_t,
+                c_plain:      *mut *mut CBoxVec) -> CBoxResult
 {
     let session = &mut *c_sess;
     let env     = try_unwrap!(dec_raw(&c_cipher, c_cipher_len as usize, Envelope::decode));
