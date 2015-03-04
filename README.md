@@ -52,8 +52,8 @@ uses `cbox_session_init_from_message`.
 
 #### Encrypting and decrypting messages
 
-Once a session is obtained it can be used to encrypt and decrypt messages via `cbox_session_encrypt`
-and `cbox_session_decrypt`, respectively.
+Once a session is obtained it can be used to encrypt and decrypt messages via `cbox_encrypt`
+and `cbox_decrypt`, respectively.
 
 The encrypt and decrypt operations fill `CBoxVec` structures which provide access to the encrypted or decrypted
 data via `cbox_vec_data` as well as its length through `cbox_vec_len`. Once the data has been consumed and is
