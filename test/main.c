@@ -33,7 +33,7 @@ void basics(CBox * alice_box, CBox * bob_box) {
     assert(rc == CBOX_SUCCESS);
     uint8_t const hello_bob[] = "Hello Bob!";
     CBoxVec * cipher = NULL;
-    cbox_encrypt(alice, hello_bob, sizeof(hello_bob), &cipher);
+    cbox_session_encrypt(alice, hello_bob, sizeof(hello_bob), &cipher);
     assert(strncmp((char const *) hello_bob, (char const *) cbox_vec_data(cipher), cbox_vec_len(cipher)) != 0);
 
     // Bob
@@ -48,13 +48,13 @@ void basics(CBox * alice_box, CBox * bob_box) {
     CBoxVec * local = NULL;
     CBoxVec * remote = NULL;
 
-    cbox_fingerprint_local(alice, &local);
+    cbox_fingerprint_local(alice_box, &local);
     cbox_fingerprint_remote(bob, &remote);
     assert(strncmp((char const *) cbox_vec_data(local), (char const *) cbox_vec_data(remote), cbox_vec_len(remote)) == 0);
     cbox_vec_free(remote);
     cbox_vec_free(local);
 
-    cbox_fingerprint_local(bob, &local);
+    cbox_fingerprint_local(bob_box, &local);
     cbox_fingerprint_remote(alice, &remote);
     assert(strncmp((char const *) cbox_vec_data(local), (char const *) cbox_vec_data(remote), cbox_vec_len(remote)) == 0);
     cbox_vec_free(remote);
@@ -91,7 +91,7 @@ void prekey_removal(CBox * alice_box, CBox * bob_box) {
     assert(rc == CBOX_SUCCESS);
     uint8_t const hello_bob[] = "Hello Bob!";
     CBoxVec * cipher = NULL;
-    cbox_encrypt(alice, hello_bob, sizeof(hello_bob), &cipher);
+    cbox_session_encrypt(alice, hello_bob, sizeof(hello_bob), &cipher);
 
     // Bob
     CBoxSession * bob = NULL;
