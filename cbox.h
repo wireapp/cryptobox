@@ -55,13 +55,13 @@ cbox_session_init_from_message(CBox * b,
                                CBoxSession ** s,
                                CBoxVec ** plain);
 
-CBoxResult   cbox_session_get(CBox * box, char const * sid, CBoxSession ** s);
+CBoxResult   cbox_session_get(CBox * b, char const * sid, CBoxSession ** s);
 CBoxResult   cbox_session_save(CBoxSession * s);
 char const * cbox_session_id(CBoxSession const * s);
 void         cbox_session_close(CBoxSession * s);
 void         cbox_encrypt(CBoxSession * s, uint8_t const * plain, uint32_t plain_len, CBoxVec ** cipher);
 CBoxResult   cbox_decrypt(CBoxSession * s, uint8_t const * cipher, uint32_t cipher_len, CBoxVec ** plain);
-void         cbox_fingerprint_local(CBoxSession const * s, CBoxVec ** buf);
+void         cbox_fingerprint_local(CBox const * b, CBoxVec ** buf);
 void         cbox_fingerprint_remote(CBoxSession const * s, CBoxVec ** buf);
 
 #endif // __CRYPTOBOX_H__
