@@ -3,7 +3,7 @@
 // the MPL was not distributed with this file, You
 // can obtain one at http://mozilla.org/MPL/2.0/.
 
-#![feature(alloc, core, collections, fs, libc, io, std_misc, path)]
+#![feature(alloc, core, collections, path_ext, libc, io, path)]
 
 extern crate libc;
 extern crate libproteus;
