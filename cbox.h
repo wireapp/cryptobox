@@ -63,5 +63,6 @@ void         cbox_encrypt(CBoxSession * s, uint8_t const * plain, uint32_t plain
 CBoxResult   cbox_decrypt(CBoxSession * s, uint8_t const * cipher, uint32_t cipher_len, CBoxVec ** plain);
 void         cbox_fingerprint_local(CBox const * b, CBoxVec ** buf);
 void         cbox_fingerprint_remote(CBoxSession const * s, CBoxVec ** buf);
+CBoxVec *    cbox_random_bytes(CBox const * b, uint32_t len);
 
 #endif // __CRYPTOBOX_H__

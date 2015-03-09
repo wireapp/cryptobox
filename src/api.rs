@@ -356,6 +356,11 @@ impl FromError<NulError> for CBoxResult {
 
 // Util /////////////////////////////////////////////////////////////////////
 
+#[no_mangle]
+pub unsafe extern fn cbox_random_bytes(_: *const CBox, n: uint32_t) -> *mut CBoxVec {
+    CBoxVec::from_vec(rand_bytes(n as usize))
+}
+
 unsafe fn dec_raw<A, F>(ptr: & *const c_uchar, len: usize, f: F) -> Result<A, DecodeError>
 where F: Fn(&[u8]) -> Result<A, DecodeError> {
     f(slice::from_raw_parts(*ptr, len))
