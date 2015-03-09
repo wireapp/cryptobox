@@ -14,6 +14,6 @@ test: compile test-compile
 
 test-compile:
 	mkdir -p test/target
-	cp target/libcryptobox-*.so test/target/libcryptobox.so 2>/dev/null || true
-	cp target/libcryptobox-*.dylib test/target/libcryptobox.dylib 2>/dev/null || true
+	cp target/debug/libcryptobox-*.so test/target/libcryptobox.so 2>/dev/null || true
+	cp target/debug/libcryptobox-*.dylib test/target/libcryptobox.dylib 2>/dev/null || true
 	$(CC) -std=c99 -Wall -g test/main.c -o test/target/main -I. -Ltest/target -lcryptobox

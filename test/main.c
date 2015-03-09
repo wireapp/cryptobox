@@ -120,6 +120,13 @@ void prekey_removal(CBox * alice_box, CBox * bob_box) {
     cbox_session_close(alice);
 }
 
+void test_random_bytes(CBox const * b) {
+    printf("test_random_bytes ... ");
+    CBoxVec * random = cbox_random_bytes(b, 16);
+    cbox_vec_free(random);
+    printf("OK\n");
+}
+
 int main() {
     // Setup Alice's & Bob's crypto boxes and identities
     char alice_tmp[] = "/tmp/cbox_test_aliceXXXXXX";
@@ -145,6 +152,7 @@ int main() {
     assert(bob_box != NULL);
 
     // Run test cases
+    test_random_bytes(alice_box);
     basics(alice_box, bob_box);
     prekey_removal(alice_box, bob_box);
 
