@@ -43,9 +43,9 @@ mod target {
 #[cfg(not(target_os = "android"))]
 mod target {
     use std::error::Error;
-    use std::old_io::stdio;
+    use std::io::{Write, stderr};
 
     pub fn error(e: &Error) {
-        writeln!(&mut stdio::stderr(), "ERROR: {}", e).unwrap();
+        writeln!(&mut stderr(), "ERROR: {}", e).unwrap();
     }
 }
