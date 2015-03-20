@@ -27,6 +27,8 @@ test-compile:
 	$(CC) -std=c99 -Wall -g test/main.c -o test/target/main -I. -Ltest/target -lcryptobox
 
 dist: compile-release
+	mkdir -p deb/usr/include
+	mkdir -p deb/usr/lib
 	cp cbox.h deb/usr/include
 	cp target/release/libcryptobox-*.so deb/usr/lib
 	makedeb --name=cryptobox       \
