@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -e
+
+rm /usr/lib/libcryptobox.so
