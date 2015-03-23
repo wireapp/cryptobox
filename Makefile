@@ -2,6 +2,15 @@ SHELL   := /usr/bin/env bash
 VERSION := "0.0.1"
 ARCH    := amd64
 BUILD   ?= 1
+OS		:= $(shell uname -s | tr '[:upper:]' '[:lower:]')
+
+ifeq ($(OS), darwin)
+LIB_TYPE := dylib
+LIB_PATH := DYLD_LIBRARY_PATH
+else
+LIB_TYPE := so
+LIB_PATH := LD_LIBRARY_PATH
+endif
 
 all: compile
 
@@ -18,13 +27,17 @@ compile-release:
 	cargo build --release
 
 test: compile test-compile
-	LD_LIBRARY_PATH=test/target valgrind --leak-check=yes --error-exitcode=1 test/target/main
+	$(LIB_PATH)=test/target valgrind --leak-check=yes --error-exitcode=1 test/target/main
 
 test-compile:
 	mkdir -p test/target
-	cp target/debug/libcryptobox-*.so test/target/libcryptobox.so 2>/dev/null || true
-	cp target/debug/libcryptobox-*.dylib test/target/libcryptobox.dylib 2>/dev/null || true
+	cp target/debug/libcryptobox-*.$(LIB_TYPE) test/target/libcryptobox.$(LIB_TYPE)
 	$(CC) -std=c99 -Wall -g test/main.c -o test/target/main -I. -Ltest/target -lcryptobox
+
+install: compile-release
+	cp cbox.h /usr/local/include
+	cp target/release/libcryptobox-*.$(LIB_TYPE) /usr/local/lib
+	ln -s /usr/local/lib/libcryptobox-*.$(LIB_TYPE) /usr/local/lib/libcryptobox.$(LIB_TYPE)
 
 dist: compile-release
 	mkdir -p deb/usr/include
