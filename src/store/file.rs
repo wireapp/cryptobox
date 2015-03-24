@@ -90,7 +90,7 @@ impl PreKeyStore<StorageError> for FileStore {
         let path = self.prekey_dir.join(&id.value().to_string());
         fs::remove_file(&path)
             .or_else(|e|
-                if e.kind() == ErrorKind::FileNotFound {
+                if e.kind() == ErrorKind::NotFound {
                     Ok(())
                 } else {
                     Err(e)
