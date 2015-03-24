@@ -39,6 +39,10 @@ install: compile-release
 	cp target/release/libcryptobox-*.$(LIB_TYPE) /usr/local/lib
 	ln -s /usr/local/lib/libcryptobox-*.$(LIB_TYPE) /usr/local/lib/libcryptobox.$(LIB_TYPE)
 
+uninstall:
+	rm -f /usr/local/include/cbox.h
+	rm -f /usr/local/lib/libcryptobox-*.$(LIB_TYPE)
+
 dist: compile-release
 	mkdir -p deb/usr/include
 	mkdir -p deb/usr/lib
