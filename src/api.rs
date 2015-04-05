@@ -11,7 +11,7 @@ use libproteus::DecodeError;
 use libproteus;
 use log;
 use std::boxed::{self, Box};
-use std::error::{Error, FromError};
+use std::error::Error;
 use std::ffi::{CStr, CString, NulError};
 use std::path::Path;
 use std::slice;
@@ -23,7 +23,7 @@ use store::file::FileStore;
 macro_rules! try_unwrap {
     ($expr:expr) => (match $expr {
         Ok(val)  => val,
-        Err(err) => return FromError::from_error(err)
+        Err(err) => return From::from(err)
     })
 }
 
@@ -293,7 +293,7 @@ pub unsafe extern fn cbox_vec_len(v: *const CBoxVec) -> uint32_t {
 
 #[repr(C)]
 #[no_mangle]
-#[derive(Copy, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum CBoxResult {
     Success               = 0,
     StorageError          = 1,
@@ -309,8 +309,8 @@ pub enum CBoxResult {
     NulError              = 11
 }
 
-impl<E: Error> FromError<DecryptError<E>> for CBoxResult {
-    fn from_error(err: DecryptError<E>) -> CBoxResult {
+impl<E: Error> From<DecryptError<E>> for CBoxResult {
+    fn from(err: DecryptError<E>) -> CBoxResult {
         match err {
             DecryptError::RemoteIdentityChanged   => CBoxResult::RemoteIdentityChanged,
             DecryptError::InvalidSignature        => CBoxResult::InvalidSignature,
@@ -326,29 +326,29 @@ impl<E: Error> FromError<DecryptError<E>> for CBoxResult {
     }
 }
 
-impl FromError<StorageError> for CBoxResult {
-    fn from_error(e: StorageError) -> CBoxResult {
+impl From<StorageError> for CBoxResult {
+    fn from(e: StorageError) -> CBoxResult {
         log::error(&e);
         CBoxResult::StorageError
     }
 }
 
-impl FromError<str::Utf8Error> for CBoxResult {
-    fn from_error(e: str::Utf8Error) -> CBoxResult {
+impl From<str::Utf8Error> for CBoxResult {
+    fn from(e: str::Utf8Error) -> CBoxResult {
         log::error(&e);
         CBoxResult::Utf8Error
     }
 }
 
-impl FromError<DecodeError> for CBoxResult {
-    fn from_error(e: DecodeError) -> CBoxResult {
+impl From<DecodeError> for CBoxResult {
+    fn from(e: DecodeError) -> CBoxResult {
         log::error(&e);
         CBoxResult::DecodeError
     }
 }
 
-impl FromError<NulError> for CBoxResult {
-    fn from_error(e: NulError) -> CBoxResult {
+impl From<NulError> for CBoxResult {
+    fn from(e: NulError) -> CBoxResult {
         log::error(&e);
         CBoxResult::NulError
     }

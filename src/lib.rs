@@ -7,7 +7,7 @@
 
 extern crate libc;
 extern crate libproteus;
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
 
 mod log;
 mod store;
