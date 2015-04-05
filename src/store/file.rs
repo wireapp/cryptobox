@@ -6,7 +6,6 @@
 use libproteus::keys::{PreKey, PreKeyId, IdentityKeyPair, rand_bytes};
 use libproteus::session::{Session, PreKeyStore};
 use rustc_serialize::hex::ToHex;
-use std::error::FromError;
 use std::path::{Path, PathBuf};
 use std::fs::{self, File, PathExt};
 use std::io::{self, Read, Write, ErrorKind};
@@ -23,7 +22,7 @@ pub struct FileStore {
 impl FileStore {
     pub fn new(root: &Path) -> StorageResult<FileStore> {
         let fs = FileStore {
-            root_dir:     PathBuf::new(root),
+            root_dir:     PathBuf::from(root),
             session_dir:  root.join("sessions"),
             prekey_dir:   root.join("prekeys"),
             identity_dir: root.join("identities")
@@ -61,7 +60,7 @@ impl Store for FileStore {
     fn load_identity(&self) -> StorageResult<Option<IdentityKeyPair>> {
         let path = self.identity_dir.join("local_identity");
         match try!(load_file(&path)) {
-            Some(b) => IdentityKeyPair::decode(&b).map_err(FromError::from_error).map(Some),
+            Some(b) => IdentityKeyPair::decode(&b).map_err(From::from).map(Some),
             None    => Ok(None)
         }
     }
@@ -81,7 +80,7 @@ impl PreKeyStore<StorageError> for FileStore {
     fn prekey(&self, id: PreKeyId) -> StorageResult<Option<PreKey>> {
         let path = self.prekey_dir.join(&id.value().to_string());
         match try!(load_file(&path)) {
-            Some(b) => PreKey::decode(&b).map_err(FromError::from_error).map(Some),
+            Some(b) => PreKey::decode(&b).map_err(From::from).map(Some),
             None    => Ok(None)
         }
     }
@@ -95,7 +94,7 @@ impl PreKeyStore<StorageError> for FileStore {
                 } else {
                     Err(e)
                 }
-            ).map_err(FromError::from_error)
+            ).map_err(From::from)
     }
 }
 
@@ -122,5 +121,5 @@ fn save(p: &Path, bytes: &[u8]) -> StorageResult<()> {
     }
     let path = p.with_extension(&rand_bytes(4).to_hex());
     try!(write(&path, bytes));
-    fs::rename(&path, p).map_err(FromError::from_error)
+    fs::rename(&path, p).map_err(From::from)
 }

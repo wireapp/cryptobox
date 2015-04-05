@@ -6,7 +6,7 @@
 use libproteus::{DecodeError, DecodeSessionError};
 use libproteus::keys::{PreKey, IdentityKeyPair};
 use libproteus::session::{Session, PreKeyStore};
-use std::error::{Error, FromError};
+use std::error::Error;
 use std::fmt;
 use std::io;
 
@@ -24,6 +24,7 @@ pub trait Store: PreKeyStore<StorageError> {
 
 // Errors ///////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct StorageError {
     pub cause: Box<Error + 'static>
 }
@@ -44,20 +45,20 @@ impl Error for StorageError {
     }
 }
 
-impl FromError<io::Error> for StorageError {
-    fn from_error(e: io::Error) -> StorageError {
+impl From<io::Error> for StorageError {
+    fn from(e: io::Error) -> StorageError {
         StorageError { cause: Box::new(e) }
     }
 }
 
-impl FromError<DecodeError> for StorageError {
-    fn from_error(e: DecodeError) -> StorageError {
+impl From<DecodeError> for StorageError {
+    fn from(e: DecodeError) -> StorageError {
         StorageError { cause: Box::new(e) }
     }
 }
 
-impl FromError<DecodeSessionError> for StorageError {
-    fn from_error(e: DecodeSessionError) -> StorageError {
+impl From<DecodeSessionError> for StorageError {
+    fn from(e: DecodeSessionError) -> StorageError {
         StorageError { cause: Box::new(e) }
     }
 }
