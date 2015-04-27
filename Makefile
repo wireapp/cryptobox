@@ -27,7 +27,7 @@ compile-release:
 	cargo build --release
 
 test: compile test-compile
-	$(LIB_PATH)=test/target valgrind --leak-check=yes --error-exitcode=1 test/target/main
+	$(LIB_PATH)=test/target valgrind --leak-check=full --error-exitcode=1 --track-origins=yes test/target/main
 
 test-compile:
 	mkdir -p test/target

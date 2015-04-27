@@ -17,7 +17,9 @@ void print_hex(unsigned char const * dat, unsigned short len) {
     printf("\n");
 }
 
-void basics(CBox * alice_box, CBox * bob_box) {
+void test_basics(CBox * alice_box, CBox * bob_box) {
+    printf("test_basics ... ");
+
     CBoxResult rc = CBOX_SUCCESS;
 
     // Bob prekey
@@ -75,9 +77,12 @@ void basics(CBox * alice_box, CBox * bob_box) {
 
     cbox_session_close(alice);
     cbox_session_close(bob);
+
+    printf("OK\n");
 }
 
-void prekey_removal(CBox * alice_box, CBox * bob_box) {
+void test_prekey_removal(CBox * alice_box, CBox * bob_box) {
+    printf("test_prekey_removal ... ");
     CBoxResult rc = CBOX_SUCCESS;
 
     // Bob prekey
@@ -118,6 +123,8 @@ void prekey_removal(CBox * alice_box, CBox * bob_box) {
     cbox_vec_free(bob_prekey);
     cbox_vec_free(cipher);
     cbox_session_close(alice);
+
+    printf("OK\n");
 }
 
 void test_random_bytes(CBox const * b) {
@@ -152,9 +159,9 @@ int main() {
     assert(bob_box != NULL);
 
     // Run test cases
+    test_basics(alice_box, bob_box);
+    test_prekey_removal(alice_box, bob_box);
     test_random_bytes(alice_box);
-    basics(alice_box, bob_box);
-    prekey_removal(alice_box, bob_box);
 
     // Cleanup
     cbox_close(alice_box);
