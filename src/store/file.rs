@@ -7,7 +7,7 @@ use libproteus::keys::{PreKey, PreKeyId, IdentityKeyPair, rand_bytes};
 use libproteus::session::{Session, PreKeyStore};
 use rustc_serialize::hex::ToHex;
 use std::path::{Path, PathBuf};
-use std::fs::{self, File, PathExt};
+use std::fs::{self, File};
 use std::io::{self, Read, Write, ErrorKind};
 use super::api::*;
 
@@ -28,13 +28,13 @@ impl FileStore {
             identity_dir: root.join("identities")
         };
 
-        if !fs.session_dir.exists() {
+        if !dir_exists(&fs.session_dir) {
             try!(fs::create_dir(&fs.session_dir));
         }
-        if !fs.prekey_dir.exists() {
+        if !dir_exists(&fs.prekey_dir) {
             try!(fs::create_dir(&fs.prekey_dir));
         }
-        if !fs.identity_dir.exists() {
+        if !dir_exists(&fs.identity_dir) {
             try!(fs::create_dir(&fs.identity_dir));
         }
 
@@ -99,7 +99,7 @@ impl PreKeyStore<StorageError> for FileStore {
 }
 
 fn load_file(p: &Path) -> StorageResult<Option<Vec<u8>>> {
-    if !p.exists() || !p.is_file() {
+    if !file_exists(p) {
         return Ok(None)
     }
 
@@ -122,4 +122,12 @@ fn save(p: &Path, bytes: &[u8]) -> StorageResult<()> {
     let path = p.with_extension(&rand_bytes(4).to_hex());
     try!(write(&path, bytes));
     fs::rename(&path, p).map_err(From::from)
+}
+
+fn dir_exists(p: &Path) -> bool {
+    fs::metadata(p).map(|m| m.is_dir()).unwrap_or(false)
+}
+
+fn file_exists(p: &Path) -> bool {
+    fs::metadata(p).map(|m| m.is_file()).unwrap_or(false)
 }
