@@ -31,17 +31,17 @@ test: compile test-compile
 
 test-compile:
 	mkdir -p test/target
-	cp target/debug/libcryptobox-*.$(LIB_TYPE) test/target/libcryptobox.$(LIB_TYPE)
+	cp target/debug/libcryptobox.$(LIB_TYPE) test/target/libcryptobox.$(LIB_TYPE)
 	$(CC) -std=c99 -Wall -g test/main.c -o test/target/main -I. -Ltest/target -lcryptobox
 
 install: compile-release
 	cp cbox.h /usr/local/include
-	cp target/release/libcryptobox-*.$(LIB_TYPE) /usr/local/lib
-	ln -s /usr/local/lib/libcryptobox-*.$(LIB_TYPE) /usr/local/lib/libcryptobox.$(LIB_TYPE)
+	cp target/release/libcryptobox.$(LIB_TYPE) /usr/local/lib
+	ln -s /usr/local/lib/libcryptobox.$(LIB_TYPE) /usr/local/lib/libcryptobox.$(LIB_TYPE)
 
 uninstall:
 	rm -f /usr/local/include/cbox.h
-	rm -f /usr/local/lib/libcryptobox*.$(LIB_TYPE)
+	rm -f /usr/local/lib/libcryptobox.$(LIB_TYPE)
 
 dist: compile-release
 	mkdir -p deb/usr/include
