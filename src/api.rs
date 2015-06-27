@@ -16,6 +16,7 @@ use std::ffi::{CStr, CString, NulError};
 use std::path::Path;
 use std::slice;
 use std::str;
+use std::u16;
 use store::api::{Store, StorageError, StorageResult};
 use store::file::FileStore;
 
@@ -71,6 +72,11 @@ pub unsafe extern
 fn cbox_close(b: *mut CBox) {
     Box::from_raw(b);
 }
+
+// Prekeys //////////////////////////////////////////////////////////////////
+
+#[no_mangle]
+pub static CBOX_LAST_PREKEY_ID: c_ushort = u16::MAX;
 
 #[no_mangle]
 pub unsafe extern

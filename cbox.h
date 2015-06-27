@@ -34,6 +34,11 @@ typedef struct CBox CBox;
 
 CBoxResult cbox_file_open(char const * path, CBox ** b);
 void       cbox_close(CBox * b);
+
+// Prekeys //////////////////////////////////////////////////////////////////
+
+extern const uint16_t CBOX_LAST_PREKEY_ID;
+
 CBoxResult cbox_new_prekey(CBox * b, uint16_t id, CBoxVec ** prekey);
 
 // CBoxSession //////////////////////////////////////////////////////////////

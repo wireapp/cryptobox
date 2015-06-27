@@ -134,6 +134,25 @@ void test_random_bytes(CBox const * b) {
     printf("OK\n");
 }
 
+void test_last_prekey(CBox * alice_box, CBox * bob_box) {
+    printf("test_last_prekey ... ");
+    CBoxVec * bob_prekey = NULL;
+    CBoxResult rc = cbox_new_prekey(bob_box, CBOX_LAST_PREKEY_ID, &bob_prekey);
+    assert(rc == CBOX_SUCCESS);
+
+    CBoxSession * alice = NULL;
+    rc = cbox_session_init_from_prekey(alice_box, "alice", cbox_vec_data(bob_prekey), cbox_vec_len(bob_prekey), &alice);
+    assert(rc == CBOX_SUCCESS);
+    cbox_session_close(alice);
+    // last prekey is not removed
+    rc = cbox_session_init_from_prekey(alice_box, "alice", cbox_vec_data(bob_prekey), cbox_vec_len(bob_prekey), &alice);
+    assert(rc == CBOX_SUCCESS);
+
+    cbox_vec_free(bob_prekey);
+    cbox_session_close(alice);
+    printf("OK\n");
+}
+
 int main() {
     // Setup Alice's & Bob's crypto boxes and identities
     char alice_tmp[] = "/tmp/cbox_test_aliceXXXXXX";
@@ -162,6 +181,7 @@ int main() {
     test_basics(alice_box, bob_box);
     test_prekey_removal(alice_box, bob_box);
     test_random_bytes(alice_box);
+    test_last_prekey(alice_box, bob_box);
 
     // Cleanup
     cbox_close(alice_box);
