@@ -10,7 +10,7 @@ use libproteus::session::*;
 use libproteus::DecodeError;
 use libproteus;
 use log;
-use std::boxed::{self, Box};
+use std::boxed::Box;
 use std::error::Error;
 use std::ffi::{CStr, CString, NulError};
 use std::path::Path;
@@ -62,7 +62,7 @@ fn cbox_file_open(c_path: *const c_char, c_box: *mut *mut CBox) -> CBoxResult {
         }
     }));
     let cbox = CBox { store: Box::new(store), ident: ident };
-    *c_box = boxed::into_raw(Box::new(cbox));
+    *c_box = Box::into_raw(Box::new(cbox));
     CBoxResult::Success
 }
 
@@ -98,7 +98,7 @@ impl SID {
     unsafe fn from_raw(c_sid: *const c_char) -> Result<SID, CBoxResult> {
         let st = CStr::from_ptr(c_sid).to_bytes();
         let cs = try!(CString::new(st));
-        let ss = try!(str::from_utf8(cs.as_bytes()).map(String::from_str));
+        let ss = try!(str::from_utf8(cs.as_bytes()).map(String::from));
         Ok(SID { string: ss, cstring: cs })
     }
 
@@ -159,7 +159,7 @@ fn cbox_session_init_from_prekey(c_box:         *mut   CBox,
     let sess   = Session::init_from_prekey(&cbox.ident, prekey);
     let pstore = ReadOnlyPks::new(&*cbox.store);
     let csess  = CBoxSession::new(c_box, sid, sess, pstore);
-    *c_session = boxed::into_raw(Box::new(csess));
+    *c_session = Box::into_raw(Box::new(csess));
     CBoxResult::Success
 }
 
@@ -179,7 +179,7 @@ fn cbox_session_init_from_message(c_box:        *mut CBox,
     let (s, p) = try_unwrap!(Session::init_from_message(&cbox.ident, &mut ps, &env));
     let csess  = CBoxSession::new(c_box, sid, s, ps);
     *c_plain   = CBoxVec::from_vec(p);
-    *c_sess    = boxed::into_raw(Box::new(csess));
+    *c_sess    = Box::into_raw(Box::new(csess));
     CBoxResult::Success
 }
 
@@ -191,7 +191,7 @@ fn cbox_session_get(c_box: *mut CBox, c_sid: *const c_char, c_sess: *mut *mut CB
     let sess   = try_unwrap!(cbox.session(&sid.string));
     let pstore = ReadOnlyPks::new(&*cbox.store);
     let csess  = CBoxSession::new(c_box, sid, sess, pstore);
-    *c_sess    = boxed::into_raw(Box::new(csess));
+    *c_sess    = Box::into_raw(Box::new(csess));
     CBoxResult::Success
 }
 
@@ -270,7 +270,7 @@ pub struct CBoxVec {
 
 impl CBoxVec {
     unsafe fn from_vec(v: Vec<u8>) -> *mut CBoxVec {
-        boxed::into_raw(Box::new(CBoxVec { vec: v }))
+        Box::into_raw(Box::new(CBoxVec { vec: v }))
     }
 }
 
