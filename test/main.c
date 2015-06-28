@@ -140,16 +140,33 @@ void test_last_prekey(CBox * alice_box, CBox * bob_box) {
     CBoxResult rc = cbox_new_prekey(bob_box, CBOX_LAST_PREKEY_ID, &bob_prekey);
     assert(rc == CBOX_SUCCESS);
 
+    // Alice
     CBoxSession * alice = NULL;
     rc = cbox_session_init_from_prekey(alice_box, "alice", cbox_vec_data(bob_prekey), cbox_vec_len(bob_prekey), &alice);
+    cbox_vec_free(bob_prekey);
     assert(rc == CBOX_SUCCESS);
-    cbox_session_close(alice);
-    // last prekey is not removed
-    rc = cbox_session_init_from_prekey(alice_box, "alice", cbox_vec_data(bob_prekey), cbox_vec_len(bob_prekey), &alice);
+    uint8_t const hello_bob[] = "Hello Bob!";
+    CBoxVec * cipher = NULL;
+    cbox_encrypt(alice, hello_bob, sizeof(hello_bob), &cipher);
+
+    // Bob
+    CBoxSession * bob = NULL;
+    CBoxVec * plain = NULL;
+    rc = cbox_session_init_from_message(bob_box, "bob", cbox_vec_data(cipher), cbox_vec_len(cipher), &bob, &plain);
     assert(rc == CBOX_SUCCESS);
 
-    cbox_vec_free(bob_prekey);
+    cbox_session_save(bob);
+    cbox_session_close(bob);
+    cbox_vec_free(plain);
+
+    // Bob's last prekey is not removed
+    rc = cbox_session_init_from_message(bob_box, "bob", cbox_vec_data(cipher), cbox_vec_len(cipher), &bob, &plain);
+    assert(rc == CBOX_SUCCESS);
+
+    cbox_vec_free(plain);
+    cbox_vec_free(cipher);
     cbox_session_close(alice);
+    cbox_session_close(bob);
     printf("OK\n");
 }
 
