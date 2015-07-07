@@ -171,7 +171,7 @@ void test_last_prekey(CBox * alice_box, CBox * bob_box) {
 }
 
 void test_duplicate_msg(CBox * alice_box, CBox * bob_box) {
-    printf("test_duplicate_prekey_msg ... ");
+    printf("test_duplicate_msg ... ");
     CBoxVec * bob_prekey = NULL;
     CBoxResult rc = cbox_new_prekey(bob_box, 0, &bob_prekey);
     assert(rc == CBOX_SUCCESS);
