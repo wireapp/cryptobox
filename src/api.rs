@@ -142,7 +142,11 @@ impl<'r> ReadOnlyPks<'r> {
 
 impl<'r> PreKeyStore<StorageError> for ReadOnlyPks<'r> {
     fn prekey(&self, id: PreKeyId) -> StorageResult<Option<PreKey>> {
-        self.store.prekey(id)
+        if self.prekeys.contains(&id) {
+            Ok(None)
+        } else {
+            self.store.prekey(id)
+        }
     }
 
     fn remove(&mut self, id: PreKeyId) -> StorageResult<()> {
