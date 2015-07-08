@@ -57,6 +57,11 @@ impl Store for FileStore {
         save(&path, &s.encode())
     }
 
+    fn delete_session(&self, id: &str) -> StorageResult<()> {
+        let path = self.session_dir.join(id);
+        remove_file(&path)
+    }
+
     fn load_identity(&self) -> StorageResult<Option<IdentityKeyPair>> {
         let path = self.identity_dir.join("local_identity");
         match try!(load_file(&path)) {
@@ -87,14 +92,7 @@ impl PreKeyStore<StorageError> for FileStore {
 
     fn remove(&mut self, id: PreKeyId) -> StorageResult<()> {
         let path = self.prekey_dir.join(&id.value().to_string());
-        fs::remove_file(&path)
-            .or_else(|e|
-                if e.kind() == ErrorKind::NotFound {
-                    Ok(())
-                } else {
-                    Err(e)
-                }
-            ).map_err(From::from)
+        remove_file(&path)
     }
 }
 
@@ -130,4 +128,15 @@ fn dir_exists(p: &Path) -> bool {
 
 fn file_exists(p: &Path) -> bool {
     fs::metadata(p).map(|m| m.is_file()).unwrap_or(false)
+}
+
+fn remove_file(p: &Path) -> StorageResult<()> {
+    fs::remove_file(p)
+        .or_else(|e|
+            if e.kind() == ErrorKind::NotFound {
+                Ok(())
+            } else {
+                Err(e)
+            }
+        ).map_err(From::from)
 }

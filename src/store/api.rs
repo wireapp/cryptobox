@@ -17,6 +17,7 @@ pub type StorageResult<T> = Result<T, StorageError>;
 pub trait Store: PreKeyStore<StorageError> {
     fn load_session<'r>(&self, li: &'r IdentityKeyPair, id: &str) -> StorageResult<Option<Session<'r>>>;
     fn save_session(&self, id: &str, s: &Session) -> StorageResult<()>;
+    fn delete_session(&self, id: &str) -> StorageResult<()>;
     fn load_identity(&self) -> StorageResult<Option<IdentityKeyPair>>;
     fn save_identity(&self, id: &IdentityKeyPair) -> StorageResult<()>;
     fn add_prekey(&self, key: &PreKey) -> StorageResult<()>;

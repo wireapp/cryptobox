@@ -232,6 +232,15 @@ fn cbox_session_close(c_sess: *mut CBoxSession) {
 
 #[no_mangle]
 pub unsafe extern
+fn cbox_session_delete(c_box: *mut CBox, c_sid: *const c_char) -> CBoxResult {
+    let cbox = &*c_box;
+    let sid  = try_unwrap!(SID::from_raw(c_sid));
+    try_unwrap!(cbox.store.delete_session(&sid.string));
+    CBoxResult::Success
+}
+
+#[no_mangle]
+pub unsafe extern
 fn cbox_encrypt(c_sess:      *mut CBoxSession,
                 c_plain:     *const uint8_t,
                 c_plain_len: uint32_t,
