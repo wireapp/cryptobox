@@ -10,6 +10,31 @@ It can be used to implement [end-to-end encryption](http://en.wikipedia.org/wiki
 
 [Sodium](https://github.com/jedisct1/libsodium)
 
+## Building
+
+### Compile
+
+    make
+
+### Test
+
+[Valgrind](http://valgrind.org/) must be installed, then
+
+    make test
+
+### Package
+
+The current build can produce a basic Debian package. [Makedeb](https://github.com/twittner/makedeb) must be installed, then
+
+    make dist
+
+will place the package into `target/release/`. These debian packages are usually attached to every release and can be downloaded via github.
+
+## Other Languages & Cross-Compiling
+
+  * Java: A Java API through JNI with support for cross-compilation to Android is provided by [cryptobox-jni](https://github.com/romanb/cryptobox-jni).
+  * Haskell: Haskell FFI bindings are available through [cryptobox-haskell](https://github.com/twittner/cryptobox-haskell).
+
 ## API Overview
 
 The following is an API overview. For detailed function signatures, refer to the [cbox.h](cbox.h) header file.
@@ -94,9 +119,3 @@ to provide thread-safety as necessary for the desired usage pattern.
 ## Error Handling
 
 TODO
-
-## Higher-level Language Bindings
-
-### Java
-
-A Java API through JNI with support for cross-compilation to Android is provided by [cryptobox-jni](https://github.com/romanb/cryptobox-jni).
