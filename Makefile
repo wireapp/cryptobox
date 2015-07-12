@@ -47,7 +47,7 @@ dist: compile-release
 	mkdir -p deb/usr/include
 	mkdir -p deb/usr/lib
 	cp cbox.h deb/usr/include
-	cp target/release/libcryptobox-*.so deb/usr/lib
+	cp target/release/libcryptobox.so deb/usr/lib
 	makedeb --name=cryptobox       \
 			--version=$(VERSION)   \
 			--debian-dir=deb       \
