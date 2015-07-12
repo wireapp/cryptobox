@@ -1,5 +1,5 @@
 SHELL   := /usr/bin/env bash
-VERSION := "0.0.1"
+VERSION := "0.0.2"
 ARCH    := amd64
 BUILD   ?= 1
 OS		:= $(shell uname -s | tr '[:upper:]' '[:lower:]')
