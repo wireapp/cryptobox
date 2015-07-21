@@ -6,7 +6,7 @@
 #![feature(libc, box_raw)]
 
 extern crate libc;
-extern crate libproteus;
+extern crate proteus;
 extern crate rustc_serialize;
 
 mod log;

@@ -3,9 +3,9 @@
 // the MPL was not distributed with this file, You
 // can obtain one at http://mozilla.org/MPL/2.0/.
 
-use libproteus::{DecodeError, DecodeSessionError};
-use libproteus::keys::{PreKey, IdentityKeyPair};
-use libproteus::session::{Session, PreKeyStore};
+use proteus::{DecodeError, EncodeError};
+use proteus::keys::{PreKey, IdentityKeyPair};
+use proteus::session::{Session, PreKeyStore};
 use std::error::Error;
 use std::fmt;
 use std::io;
@@ -27,7 +27,7 @@ pub trait Store: PreKeyStore<StorageError> {
 
 #[derive(Debug)]
 pub struct StorageError {
-    pub cause: Box<Error + 'static>
+    pub cause: Box<Error>
 }
 
 impl fmt::Display for StorageError {
@@ -58,8 +58,8 @@ impl From<DecodeError> for StorageError {
     }
 }
 
-impl From<DecodeSessionError> for StorageError {
-    fn from(e: DecodeSessionError) -> StorageError {
+impl From<EncodeError> for StorageError {
+    fn from(e: EncodeError) -> StorageError {
         StorageError { cause: Box::new(e) }
     }
 }
