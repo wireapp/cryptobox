@@ -25,7 +25,8 @@ typedef enum {
     CBOX_TOO_DISTANT_FUTURE      = 8,
     CBOX_OUTDATED_MESSAGE        = 9,
     CBOX_UTF8_ERROR              = 10,
-    CBOX_NUL_ERROR               = 11
+    CBOX_NUL_ERROR               = 11,
+    CBOX_ENCODE_ERROR            = 12
 } CBoxResult;
 
 // CBox /////////////////////////////////////////////////////////////////////

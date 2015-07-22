@@ -4,11 +4,10 @@
 // can obtain one at http://mozilla.org/MPL/2.0/.
 
 use libc::*;
-use libproteus::keys::*;
-use libproteus::message::Envelope;
-use libproteus::session::*;
-use libproteus::DecodeError;
-use libproteus;
+use proteus::keys::{self, IdentityKeyPair, PreKey, PreKeyBundle, PreKeyId};
+use proteus::message::Envelope;
+use proteus::session::{DecryptError, PreKeyStore, Session};
+use proteus::{self, DecodeError, EncodeError};
 use log;
 use std::boxed::Box;
 use std::error::Error;
@@ -48,7 +47,7 @@ impl CBox {
 #[no_mangle]
 pub unsafe extern
 fn cbox_file_open(c_path: *const c_char, c_box: *mut *mut CBox) -> CBoxResult {
-    libproteus::init();
+    proteus::init();
     let name  = try_unwrap!(str::from_utf8(CStr::from_ptr(c_path).to_bytes()));
     let path  = Path::new(name);
     let store = try_unwrap!(FileStore::new(path));
@@ -87,7 +86,7 @@ fn cbox_new_prekey(c_box: *mut CBox, c_id: c_ushort, c_bundle: *mut *mut CBoxVec
 
     try_unwrap!(cbox.store.add_prekey(&pk));
 
-    let bundle = PreKeyBundle::new(cbox.ident.public_key, &pk).encode();
+    let bundle = try_unwrap!(PreKeyBundle::new(cbox.ident.public_key, &pk).encode());
     *c_bundle  = CBoxVec::from_vec(bundle);
 
     CBoxResult::Success
@@ -244,12 +243,13 @@ pub unsafe extern
 fn cbox_encrypt(c_sess:      *mut CBoxSession,
                 c_plain:     *const uint8_t,
                 c_plain_len: uint32_t,
-                c_cipher:    *mut *mut CBoxVec)
+                c_cipher:    *mut *mut CBoxVec) -> CBoxResult
 {
     let sref   = &mut *c_sess;
     let plain  = slice::from_raw_parts(c_plain, c_plain_len as usize);
-    let cipher = sref.sess.encrypt(plain).encode();
+    let cipher = try_unwrap!(sref.sess.encrypt(plain).and_then(|m| m.encode()));
     *c_cipher  = CBoxVec::from_vec(cipher);
+    CBoxResult::Success
 }
 
 #[no_mangle]
@@ -325,7 +325,8 @@ pub enum CBoxResult {
     TooDistantFuture      = 8,
     OutdatedMessage       = 9,
     Utf8Error             = 10,
-    NulError              = 11
+    NulError              = 11,
+    EncodeError           = 12
 }
 
 impl<E: Error> From<DecryptError<E>> for CBoxResult {
@@ -366,6 +367,13 @@ impl From<DecodeError> for CBoxResult {
     }
 }
 
+impl From<EncodeError> for CBoxResult {
+    fn from(e: EncodeError) -> CBoxResult {
+        log::error(&e);
+        CBoxResult::EncodeError
+    }
+}
+
 impl From<NulError> for CBoxResult {
     fn from(e: NulError) -> CBoxResult {
         log::error(&e);
@@ -377,7 +385,7 @@ impl From<NulError> for CBoxResult {
 
 #[no_mangle]
 pub unsafe extern fn cbox_random_bytes(_: *const CBox, n: uint32_t) -> *mut CBoxVec {
-    CBoxVec::from_vec(rand_bytes(n as usize))
+    CBoxVec::from_vec(keys::rand_bytes(n as usize))
 }
 
 unsafe fn dec_raw<A, F>(ptr: & *const c_uchar, len: usize, f: F) -> Result<A, DecodeError>

@@ -3,8 +3,8 @@
 // the MPL was not distributed with this file, You
 // can obtain one at http://mozilla.org/MPL/2.0/.
 
-use libproteus::keys::{PreKey, PreKeyId, IdentityKeyPair, rand_bytes};
-use libproteus::session::{Session, PreKeyStore};
+use proteus::keys::{PreKey, PreKeyId, IdentityKeyPair, rand_bytes};
+use proteus::session::{Session, PreKeyStore};
 use rustc_serialize::hex::ToHex;
 use std::path::{Path, PathBuf};
 use std::fs::{self, File};
@@ -54,7 +54,7 @@ impl Store for FileStore {
 
     fn save_session(&self, id: &str, s: &Session) -> StorageResult<()> {
         let path = self.session_dir.join(id);
-        save(&path, &s.encode())
+        save(&path, &try!(s.encode()))
     }
 
     fn delete_session(&self, id: &str) -> StorageResult<()> {
@@ -72,12 +72,12 @@ impl Store for FileStore {
 
     fn save_identity(&self, id: &IdentityKeyPair) -> StorageResult<()> {
         let path = self.identity_dir.join("local_identity");
-        save(&path, &id.encode())
+        save(&path, &try!(id.encode()))
     }
 
     fn add_prekey(&self, key: &PreKey) -> StorageResult<()> {
         let path = self.prekey_dir.join(&key.key_id.value().to_string());
-        save(&path, &key.encode())
+        save(&path, &try!(key.encode()))
     }
 }
 
