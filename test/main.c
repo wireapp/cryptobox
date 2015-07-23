@@ -35,7 +35,8 @@ void test_basics(CBox * alice_box, CBox * bob_box) {
     assert(rc == CBOX_SUCCESS);
     uint8_t const hello_bob[] = "Hello Bob!";
     CBoxVec * cipher = NULL;
-    cbox_encrypt(alice, hello_bob, sizeof(hello_bob), &cipher);
+    rc = cbox_encrypt(alice, hello_bob, sizeof(hello_bob), &cipher);
+    assert(rc == CBOX_SUCCESS);
     assert(strncmp((char const *) hello_bob, (char const *) cbox_vec_data(cipher), cbox_vec_len(cipher)) != 0);
 
     // Bob
@@ -96,7 +97,8 @@ void test_prekey_removal(CBox * alice_box, CBox * bob_box) {
     assert(rc == CBOX_SUCCESS);
     uint8_t const hello_bob[] = "Hello Bob!";
     CBoxVec * cipher = NULL;
-    cbox_encrypt(alice, hello_bob, sizeof(hello_bob), &cipher);
+    rc = cbox_encrypt(alice, hello_bob, sizeof(hello_bob), &cipher);
+    assert(rc == CBOX_SUCCESS);
 
     // Bob
     CBoxSession * bob = NULL;
@@ -147,7 +149,8 @@ void test_last_prekey(CBox * alice_box, CBox * bob_box) {
     assert(rc == CBOX_SUCCESS);
     uint8_t const hello_bob[] = "Hello Bob!";
     CBoxVec * cipher = NULL;
-    cbox_encrypt(alice, hello_bob, sizeof(hello_bob), &cipher);
+    rc = cbox_encrypt(alice, hello_bob, sizeof(hello_bob), &cipher);
+    assert(rc == CBOX_SUCCESS);
 
     // Bob
     CBoxSession * bob = NULL;
@@ -183,7 +186,8 @@ void test_duplicate_msg(CBox * alice_box, CBox * bob_box) {
     assert(rc == CBOX_SUCCESS);
     uint8_t const hello_bob[] = "Hello Bob!";
     CBoxVec * cipher = NULL;
-    cbox_encrypt(alice, hello_bob, sizeof(hello_bob), &cipher);
+    rc = cbox_encrypt(alice, hello_bob, sizeof(hello_bob), &cipher);
+    assert(rc == CBOX_SUCCESS);
 
     // Bob
     CBoxSession * bob = NULL;
