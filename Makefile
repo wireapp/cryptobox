@@ -47,10 +47,12 @@ dist: compile-release
 	mkdir -p deb/usr/include
 	mkdir -p deb/usr/lib
 	cp cbox.h deb/usr/include
-	cp target/release/libcryptobox.so deb/usr/lib
+	cp target/release/libcryptobox.$(LIB_TYPE) deb/usr/lib
+ifeq ($(OS), linux)
 	makedeb --name=cryptobox       \
 			--version=$(VERSION)   \
 			--debian-dir=deb       \
 			--build=$(BUILD)       \
 			--architecture=$(ARCH) \
 			--output-dir=target/release
+endif
