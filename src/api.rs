@@ -159,7 +159,7 @@ pub unsafe extern
 fn cbox_session_init_from_prekey(c_box:         *mut   CBox,
                                  c_sid:         *const c_char,
                                  c_prekey:      *const uint8_t,
-                                 c_prekey_len:  uint32_t,
+                                 c_prekey_len:  size_t,
                                  c_session:     *mut *const CBoxSession) -> CBoxResult
 {
     let cbox   = &*c_box;
@@ -177,7 +177,7 @@ pub unsafe extern
 fn cbox_session_init_from_message(c_box:        *mut CBox,
                                   c_sid:        *const c_char,
                                   c_cipher:     *const uint8_t,
-                                  c_cipher_len: uint32_t,
+                                  c_cipher_len: size_t,
                                   c_sess:       *mut *mut CBoxSession,
                                   c_plain:      *mut *mut CBoxVec) -> CBoxResult
 {
@@ -242,7 +242,7 @@ fn cbox_session_delete(c_box: *mut CBox, c_sid: *const c_char) -> CBoxResult {
 pub unsafe extern
 fn cbox_encrypt(c_sess:      *mut CBoxSession,
                 c_plain:     *const uint8_t,
-                c_plain_len: uint32_t,
+                c_plain_len: size_t,
                 c_cipher:    *mut *mut CBoxVec) -> CBoxResult
 {
     let sref   = &mut *c_sess;
@@ -256,7 +256,7 @@ fn cbox_encrypt(c_sess:      *mut CBoxSession,
 pub unsafe extern
 fn cbox_decrypt(c_sess:       *mut CBoxSession,
                 c_cipher:     *const uint8_t,
-                c_cipher_len: uint32_t,
+                c_cipher_len: size_t,
                 c_plain:      *mut *mut CBoxVec) -> CBoxResult
 {
     let session = &mut *c_sess;
@@ -304,8 +304,8 @@ pub unsafe extern fn cbox_vec_data(v: *const CBoxVec) -> *const uint8_t {
 }
 
 #[no_mangle]
-pub unsafe extern fn cbox_vec_len(v: *const CBoxVec) -> uint32_t {
-    (*v).vec.len() as uint32_t
+pub unsafe extern fn cbox_vec_len(v: *const CBoxVec) -> size_t {
+    (*v).vec.len() as size_t
 }
 
 // CBoxResult ///////////////////////////////////////////////////////////////
@@ -384,7 +384,7 @@ impl From<NulError> for CBoxResult {
 // Util /////////////////////////////////////////////////////////////////////
 
 #[no_mangle]
-pub unsafe extern fn cbox_random_bytes(_: *const CBox, n: uint32_t) -> *mut CBoxVec {
+pub unsafe extern fn cbox_random_bytes(_: *const CBox, n: size_t) -> *mut CBoxVec {
     CBoxVec::from_vec(keys::rand_bytes(n as usize))
 }
 

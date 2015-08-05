@@ -8,7 +8,7 @@
 typedef struct CBoxVec CBoxVec;
 
 uint8_t * cbox_vec_data(CBoxVec const * v);
-uint32_t  cbox_vec_len(CBoxVec  const * v);
+size_t    cbox_vec_len(CBoxVec  const * v);
 void      cbox_vec_free(CBoxVec * v);
 
 // CBoxResult ///////////////////////////////////////////////////////////////
@@ -50,14 +50,14 @@ CBoxResult
 cbox_session_init_from_prekey(CBox * b,
                               char const * sid,
                               uint8_t const * prekey,
-                              uint32_t prekey_len,
+                              size_t prekey_len,
                               CBoxSession ** s);
 
 CBoxResult
 cbox_session_init_from_message(CBox * b,
                                char const * sid,
                                uint8_t const * cipher,
-                               uint32_t cipher_len,
+                               size_t cipher_len,
                                CBoxSession ** s,
                                CBoxVec ** plain);
 
@@ -66,10 +66,10 @@ CBoxResult   cbox_session_save(CBoxSession * s);
 char const * cbox_session_id(CBoxSession const * s);
 void         cbox_session_close(CBoxSession * s);
 CBoxResult   cbox_session_delete(CBox * b, char const * sid);
-CBoxResult   cbox_encrypt(CBoxSession * s, uint8_t const * plain, uint32_t plain_len, CBoxVec ** cipher);
-CBoxResult   cbox_decrypt(CBoxSession * s, uint8_t const * cipher, uint32_t cipher_len, CBoxVec ** plain);
+CBoxResult   cbox_encrypt(CBoxSession * s, uint8_t const * plain, size_t plain_len, CBoxVec ** cipher);
+CBoxResult   cbox_decrypt(CBoxSession * s, uint8_t const * cipher, size_t cipher_len, CBoxVec ** plain);
 void         cbox_fingerprint_local(CBox const * b, CBoxVec ** buf);
 void         cbox_fingerprint_remote(CBoxSession const * s, CBoxVec ** buf);
-CBoxVec *    cbox_random_bytes(CBox const * b, uint32_t len);
+CBoxVec *    cbox_random_bytes(CBox const * b, size_t len);
 
 #endif // __CRYPTOBOX_H__
