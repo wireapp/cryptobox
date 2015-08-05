@@ -32,7 +32,8 @@ test: compile test-compile
 test-compile:
 	mkdir -p test/target
 	cp target/debug/libcryptobox.$(LIB_TYPE) test/target/libcryptobox.$(LIB_TYPE)
-	$(CC) -std=c99 -Wall -g test/main.c -o test/target/main -I. -Ltest/target -lcryptobox
+	rm -f test/target/main
+	$(CC) -std=c99 -Wall -Wextra -Werror -g test/main.c -o test/target/main -I. -Ltest/target -lcryptobox
 
 install: compile-release
 	cp cbox.h /usr/local/include
