@@ -18,4 +18,4 @@ rustc-serialize = "> 0.2"
 
 [dependencies.proteus]
 git    = "https://github.com/twittner/proteus"
-branch = "chacha20"
+branch = "develop"
