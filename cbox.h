@@ -3,6 +3,12 @@
 
 #include <stdint.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 // CBoxVec //////////////////////////////////////////////////////////////////
 
 typedef struct CBoxVec CBoxVec;
@@ -49,8 +55,8 @@ typedef struct CBoxSession CBoxSession;
 CBoxResult
 cbox_session_init_from_prekey(CBox * b,
                               char const * sid,
-                              uint8_t const * prekey,
-                              size_t prekey_len,
+                              uint8_t const * peer_prekey,
+                              size_t peer_prekey_len,
                               CBoxSession ** s);
 
 CBoxResult
@@ -71,5 +77,11 @@ CBoxResult   cbox_decrypt(CBoxSession * s, uint8_t const * cipher, size_t cipher
 void         cbox_fingerprint_local(CBox const * b, CBoxVec ** buf);
 void         cbox_fingerprint_remote(CBoxSession const * s, CBoxVec ** buf);
 CBoxVec *    cbox_random_bytes(CBox const * b, size_t len);
+
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif // __CRYPTOBOX_H__
