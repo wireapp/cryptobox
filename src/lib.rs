@@ -3,7 +3,7 @@
 // the MPL was not distributed with this file, You
 // can obtain one at http://mozilla.org/MPL/2.0/.
 
-#![feature(libc, box_raw)]
+#![feature(box_raw)]
 
 extern crate libc;
 extern crate proteus;
