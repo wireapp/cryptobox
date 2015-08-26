@@ -5,7 +5,7 @@
 
 use std::error::Error;
 
-pub fn error(e: &Error) {
+pub fn error<E: Error>(e: &E) {
     target::error(e)
 }
 
@@ -20,7 +20,7 @@ mod target {
     const TAG: &'static [u8] = b"CryptoBox";
     const LEVEL_ERROR: c_int = 6;
 
-    pub fn error(e: &Error) {
+    pub fn error<E: Error>(e: &E) {
         log(&format!("{}", e), LEVEL_ERROR)
     }
 
@@ -45,7 +45,7 @@ mod target {
     use std::error::Error;
     use std::io::{Write, stderr};
 
-    pub fn error(e: &Error) {
+    pub fn error<E: Error>(e: &E) {
         writeln!(&mut stderr(), "ERROR: {}", e).unwrap();
     }
 }
