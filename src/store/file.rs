@@ -47,14 +47,14 @@ impl Store for FileStore {
     fn load_session<'r>(&self, li: &'r IdentityKeyPair, id: &str) -> StorageResult<Option<Session<'r>>> {
         let path = self.session_dir.join(id);
         match try!(load_file(&path)) {
-            Some(b) => Ok(Some(try!(Session::decode(li, &b)))),
+            Some(b) => Ok(Some(try!(Session::deserialise(li, &b)))),
             None    => Ok(None)
         }
     }
 
     fn save_session(&self, id: &str, s: &Session) -> StorageResult<()> {
         let path = self.session_dir.join(id);
-        save(&path, &try!(s.encode()))
+        save(&path, &try!(s.serialise()))
     }
 
     fn delete_session(&self, id: &str) -> StorageResult<()> {
@@ -65,19 +65,19 @@ impl Store for FileStore {
     fn load_identity(&self) -> StorageResult<Option<IdentityKeyPair>> {
         let path = self.identity_dir.join("local_identity");
         match try!(load_file(&path)) {
-            Some(b) => IdentityKeyPair::decode(&b).map_err(From::from).map(Some),
+            Some(b) => IdentityKeyPair::deserialise(&b).map_err(From::from).map(Some),
             None    => Ok(None)
         }
     }
 
     fn save_identity(&self, id: &IdentityKeyPair) -> StorageResult<()> {
         let path = self.identity_dir.join("local_identity");
-        save(&path, &try!(id.encode()))
+        save(&path, &try!(id.serialise()))
     }
 
     fn add_prekey(&self, key: &PreKey) -> StorageResult<()> {
         let path = self.prekey_dir.join(&key.key_id.value().to_string());
-        save(&path, &try!(key.encode()))
+        save(&path, &try!(key.serialise()))
     }
 }
 
@@ -85,7 +85,7 @@ impl PreKeyStore<StorageError> for FileStore {
     fn prekey(&self, id: PreKeyId) -> StorageResult<Option<PreKey>> {
         let path = self.prekey_dir.join(&id.value().to_string());
         match try!(load_file(&path)) {
-            Some(b) => PreKey::decode(&b).map_err(From::from).map(Some),
+            Some(b) => PreKey::deserialise(&b).map_err(From::from).map(Some),
             None    => Ok(None)
         }
     }
