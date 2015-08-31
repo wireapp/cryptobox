@@ -86,7 +86,7 @@ fn cbox_new_prekey(c_box: *mut CBox, c_id: c_ushort, c_bundle: *mut *mut CBoxVec
 
     try_unwrap!(cbox.store.add_prekey(&pk));
 
-    let bundle = try_unwrap!(PreKeyBundle::new(cbox.ident.public_key, &pk).encode());
+    let bundle = try_unwrap!(PreKeyBundle::new(cbox.ident.public_key, &pk).serialise());
     *c_bundle  = CBoxVec::from_vec(bundle);
 
     CBoxResult::Success
@@ -164,7 +164,7 @@ fn cbox_session_init_from_prekey(c_box:         *mut   CBox,
 {
     let cbox   = &*c_box;
     let sid    = try_unwrap!(SID::from_raw(c_sid));
-    let prekey = try_unwrap!(dec_raw(&c_prekey, c_prekey_len as usize, PreKeyBundle::decode));
+    let prekey = try_unwrap!(dec_raw(&c_prekey, c_prekey_len as usize, PreKeyBundle::deserialise));
     let sess   = Session::init_from_prekey(&cbox.ident, prekey);
     let pstore = ReadOnlyPks::new(&*cbox.store);
     let csess  = CBoxSession::new(c_box, sid, sess, pstore);
@@ -183,7 +183,7 @@ fn cbox_session_init_from_message(c_box:        *mut CBox,
 {
     let cbox   = &*c_box;
     let sid    = try_unwrap!(SID::from_raw(c_sid));
-    let env    = try_unwrap!(dec_raw(&c_cipher, c_cipher_len as usize, Envelope::decode));
+    let env    = try_unwrap!(dec_raw(&c_cipher, c_cipher_len as usize, Envelope::deserialise));
     let mut ps = ReadOnlyPks::new(&*cbox.store);
     let (s, p) = try_unwrap!(Session::init_from_message(&cbox.ident, &mut ps, &env));
     let csess  = CBoxSession::new(c_box, sid, s, ps);
@@ -247,7 +247,7 @@ fn cbox_encrypt(c_sess:      *mut CBoxSession,
 {
     let sref   = &mut *c_sess;
     let plain  = slice::from_raw_parts(c_plain, c_plain_len as usize);
-    let cipher = try_unwrap!(sref.sess.encrypt(plain).and_then(|m| m.encode()));
+    let cipher = try_unwrap!(sref.sess.encrypt(plain).and_then(|m| m.serialise()));
     *c_cipher  = CBoxVec::from_vec(cipher);
     CBoxResult::Success
 }
@@ -260,7 +260,7 @@ fn cbox_decrypt(c_sess:       *mut CBoxSession,
                 c_plain:      *mut *mut CBoxVec) -> CBoxResult
 {
     let session = &mut *c_sess;
-    let env     = try_unwrap!(dec_raw(&c_cipher, c_cipher_len as usize, Envelope::decode));
+    let env     = try_unwrap!(dec_raw(&c_cipher, c_cipher_len as usize, Envelope::deserialise));
     let plain   = try_unwrap!(session.sess.decrypt(&mut session.pstore, &env));
     *c_plain    = CBoxVec::from_vec(plain);
     CBoxResult::Success
