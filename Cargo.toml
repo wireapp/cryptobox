@@ -1,7 +1,7 @@
 [package]
 
 name         = "cryptobox"
-version      = "0.2.0"
+version      = "0.3.0"
 authors      = ["Roman S. Borschel <roman@pkaboo.org>", "Toralf Wittner <tw@dtex.org>"]
 description  = "High-level C API with persistent storage for the proteus implementation of the axolotl protocol."
 homepage     = "https://github.com/romanb/cryptobox"
