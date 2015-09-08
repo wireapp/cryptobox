@@ -3,9 +3,8 @@
 // the MPL was not distributed with this file, You
 // can obtain one at http://mozilla.org/MPL/2.0/.
 
-use proteus::keys::{PreKey, PreKeyId, IdentityKeyPair, rand_bytes};
+use proteus::keys::{PreKey, PreKeyId, IdentityKeyPair};
 use proteus::session::{Session, PreKeyStore};
-use rustc_serialize::hex::ToHex;
 use std::path::{Path, PathBuf};
 use std::fs::{self, File};
 use std::io::{self, Read, Write, ErrorKind};
@@ -54,7 +53,7 @@ impl Store for FileStore {
 
     fn save_session(&self, id: &str, s: &Session) -> StorageResult<()> {
         let path = self.session_dir.join(id);
-        save(&path, &try!(s.serialise()))
+        save(&path, &try!(s.serialise()), false)
     }
 
     fn delete_session(&self, id: &str) -> StorageResult<()> {
@@ -72,12 +71,12 @@ impl Store for FileStore {
 
     fn save_identity(&self, id: &IdentityKeyPair) -> StorageResult<()> {
         let path = self.identity_dir.join("local_identity");
-        save(&path, &try!(id.serialise()))
+        save(&path, &try!(id.serialise()), true)
     }
 
     fn add_prekey(&self, key: &PreKey) -> StorageResult<()> {
         let path = self.prekey_dir.join(&key.key_id.value().to_string());
-        save(&path, &try!(key.serialise()))
+        save(&path, &try!(key.serialise()), true)
     }
 }
 
@@ -109,16 +108,20 @@ fn load_file(p: &Path) -> StorageResult<Option<Vec<u8>>> {
     Ok(Some(dat))
 }
 
-fn save(p: &Path, bytes: &[u8]) -> StorageResult<()> {
-    fn write(path: &Path, bytes: &[u8]) -> io::Result<()> {
+fn save(p: &Path, bytes: &[u8], sync: bool) -> StorageResult<()> {
+    fn write(path: &Path, bytes: &[u8], sync: bool) -> io::Result<()> {
         let mut file = try!(File::create(&path));
-        (file.write_all(bytes).and(file.sync_all())).or_else(|e| {
+        let mut rs = file.write_all(bytes);
+        if sync {
+            rs = rs.and(file.sync_all());
+        }
+        rs.or_else(|e| {
             let _ = fs::remove_file(&path);
             Err(e)
         })
     }
-    let path = p.with_extension(&rand_bytes(4).to_hex());
-    try!(write(&path, bytes));
+    let path = p.with_extension("tmp");
+    try!(write(&path, bytes, sync));
     fs::rename(&path, p).map_err(From::from)
 }
 
