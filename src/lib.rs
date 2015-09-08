@@ -7,7 +7,6 @@
 
 extern crate libc;
 extern crate proteus;
-extern crate rustc_serialize;
 
 mod log;
 mod store;

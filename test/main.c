@@ -45,6 +45,7 @@ void test_basics(CBox * alice_box, CBox * bob_box) {
     rc = cbox_session_init_from_message(bob_box, "bob", cbox_vec_data(cipher), cbox_vec_len(cipher), &bob, &plain);
     assert(rc == CBOX_SUCCESS);
     cbox_session_save(bob);
+
     assert(strncmp((char const *) hello_bob, (char const *) cbox_vec_data(plain), cbox_vec_len(plain)) == 0);
 
     // Compare fingerprints
