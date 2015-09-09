@@ -220,7 +220,7 @@ fn cbox_session_init_from_prekey(c_box:        *mut   CBox,
                                  c_sid:        *const c_char,
                                  c_prekey:     *const uint8_t,
                                  c_prekey_len: size_t,
-                                 c_session:    *mut *const CBoxSession) -> CBoxResult
+                                 c_session:    *mut *mut CBoxSession) -> CBoxResult
 {
     let cbox   = &*c_box;
     let sid    = try_unwrap!(SID::from_raw(c_sid));

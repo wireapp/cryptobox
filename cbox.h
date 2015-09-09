@@ -7,6 +7,7 @@
 extern "C" {
 #endif
 
+/////////////
 // CBoxVec //////////////////////////////////////////////////////////////////
 // A heap-allocated vector of bytes.
 typedef struct CBoxVec CBoxVec;
@@ -20,6 +21,7 @@ size_t cbox_vec_len(CBoxVec  const * v);
 // Deallocate a byte vector.
 void cbox_vec_free(CBoxVec * v);
 
+////////////////
 // CBoxResult ///////////////////////////////////////////////////////////////
 // The result of an operation that might fail.
 typedef enum {
@@ -74,8 +76,9 @@ typedef enum {
     CBOX_IDENTITY_ERROR          = 13
 } CBoxResult;
 
+//////////////////////
 // CBoxIdentityMode /////////////////////////////////////////////////////////
-
+// The local storage mode for an external identity in `cbox_file_open_with`.
 typedef enum {
     // The full identity is stored locally inside the CBox.
     CBOX_IDENTITY_COMPLETE = 0,
@@ -84,48 +87,77 @@ typedef enum {
     CBOX_IDENTITY_PUBLIC   = 1
 } CBoxIdentityMode;
 
+//////////
 // CBox /////////////////////////////////////////////////////////////////////
-
+// A container of sessions and prekeys of a single peer with a long-lived
+// identity which is either internally or externally managed.
 typedef struct CBox CBox;
 
-// Open a CBox.
+// Open a CBox in an existing directory with an internally managed identity.
+//
+// The given directory is the root directory for the CBox in which
+// sessions, prekeys, the long-term identity as well auxiliary data may
+// be stored. If the directory is empty, it is initialised with a new
+// long-term identity.
+// ---
+// `path` is the path to an existing directory.
+// `b` is the pointer to point at the opened CBox.
 CBoxResult cbox_file_open(char const * path, CBox ** b);
 
 // Open a CBox using an existing external identity.
+//
+// The given directory is the root directory for the CBox in which
+// sessions, prekeys, the long-term identity as well auxiliary data may
+// be stored. If the directory is empty, it is initialised with the given
+// long-term identity.
 // ---
-// `path` is a path to an existing directory. ...
-//
+// `path` is a path to an existing directory.
 // `ident` is the external identity to use.  An existing CBox with only
-// a public local identity must always be opened with an external identity.
-//
+//         a public local identity must always be opened with an external
+//         identity.
 // `ident_len` is the length of `ident`.
-//
-// `mode` specifies the desired locally stored identity.
+// `mode` specifies the desired storage of the given identity inside the box.
 CBoxResult cbox_file_open_with(char const * path,
                                uint8_t const * ident,
                                size_t ident_len,
                                CBoxIdentityMode mode,
                                CBox ** b);
 
-// Copies the serialised identity keypair from the given cryptobox.
+// Copies the serialised long-term identity from the given cryptobox.
+//
+// The allocated CBoxVec contains the complete long-term identity of the given
+// CBox and thus sensitive private key material. It should be stored in a safe
+// location and / or transmitted over a secure channel before being disposed
+// in a timely manner.
+// ---
+// `b` is the CBox from which to copy the identity.
+// `ident` is the pointer to point at the serialised identity.
 CBoxResult cbox_identity_copy(CBox const * b, CBoxVec ** ident);
 
 // Close a CBox, freeing the memory associated with it.
 //
-// Note: A box should only be closed after all sessions acquired through it
-// have been closed. Any remaining open sessions that were obtained from the
-// box can no longer be used with the exception of being closed via
-// `cbox_session_close`.
+// A CBox should only be closed after all sessions acquired through it have
+// been closed. Any remaining open sessions that were obtained from the box
+// can no longer be used with the exception of being closed via `cbox_session_close`.
 void cbox_close(CBox * b);
 
+/////////////
 // Prekeys //////////////////////////////////////////////////////////////////
 
 // The ID of the "last resort" prekey, which is never removed.
 extern const uint16_t CBOX_LAST_PREKEY_ID;
 
-// Generate a new prekey, returning the public prekey for usage by a peer.
+// Generate a new prekey, returning the public prekey material for usage by a
+// peer to initialise a session.
+//
+// If a prekey with the same ID already exists, it is replaced.
+// ---
+// `b` is the CBox in which to create the new prekey.
+// `prekey` is the pointer to point at the public key material of the new
+//          prekey for usage by a peer.
 CBoxResult cbox_new_prekey(CBox * b, uint16_t id, CBoxVec ** prekey);
 
+/////////////////
 // CBoxSession //////////////////////////////////////////////////////////////
 // A cryptographic session with a peer.
 typedef struct CBoxSession CBoxSession;
@@ -137,20 +169,15 @@ typedef struct CBoxSession CBoxSession;
 // `b` is the box in which the session is created. The session will be bound
 //     to the lifetime of the box and can only be used until either the
 //     session or the box is closed.
-//
 // `sid` is a unique ID to use for the new session.
-//
 // `peer_prekey` is the public prekey of the peer.
-//
 // `peer_prekey_len` is the length (in bytes) of the `peer_prekey`.
-//
-// `s` is the target pointer for the successfully initialised session.
-CBoxResult
-cbox_session_init_from_prekey(CBox * b,
-                              char const * sid,
-                              uint8_t const * peer_prekey,
-                              size_t peer_prekey_len,
-                              CBoxSession ** s);
+// `s` is the pointer to point at the successfully initialised session.
+CBoxResult cbox_session_init_from_prekey(CBox * b,
+                                         char const * sid,
+                                         uint8_t const * peer_prekey,
+                                         size_t peer_prekey_len,
+                                         CBoxSession ** s);
 
 // Initialise a session from a ciphertext message.
 //
@@ -159,35 +186,28 @@ cbox_session_init_from_prekey(CBox * b,
 // `b` is the box in which the session is created. The session will be bound
 //     to the lifetime of the box and can only be used until either the
 //     session or the box is closed.
-//
 // `sid` is a unique ID to use for the new session.
-//
 // `cipher` is the received ciphertext message.
-//
 // `cipher_len` is the length (in bytes) of `cipher`.
-//
-// `s` is the target pointer for the successfully initialised session.
-//
-// `plain` is the target pointer for the successfully decrypted message.
-CBoxResult
-cbox_session_init_from_message(CBox * b,
-                               char const * sid,
-                               uint8_t const * cipher,
-                               size_t cipher_len,
-                               CBoxSession ** s,
-                               CBoxVec ** plain);
+// `s` is the pointer to point at the successfully initialised session.
+// `plain` is the pointer to point at the successfully decrypted message.
+CBoxResult cbox_session_init_from_message(CBox * b,
+                                          char const * sid,
+                                          uint8_t const * cipher,
+                                          size_t cipher_len,
+                                          CBoxSession ** s,
+                                          CBoxVec ** plain);
 
 // Lookup a session by ID.
 //
-// If the session is not found, `CBOX_NO_SESSION` is returned.
+// If the session is not found, `CBOX_NO_SESSION` is returned and `s` will
+// be unchanged.
 // ---
 // `b` is the box in which to look for the session. The session will be bound
 //     to the lifetime of the box and can only be used until either the
 //     session or the box is closed.
-//
 // `sid` is the session ID to look for.
-//
-// `s` is the target pointer for the session, if it is found.
+// `s` is the pointer to point at the session, if it is found.
 CBoxResult cbox_session_get(CBox * b, char const * sid, CBoxSession ** s);
 
 // Save a session.
@@ -195,9 +215,11 @@ CBoxResult cbox_session_get(CBox * b, char const * sid, CBoxSession ** s);
 // Saving a session makes any changes to the key material as a result of
 // `cbox_encrypt` and `cbox_decrypt` permanent. Newly initialised sessions
 // as a result of `cbox_session_init_from_message` and `cbox_session_init_from_prekey`
-// are also only persisted when saved, to facilitate retries.
+// are also only persisted (and prekeys ultimately removed) when saved, to
+// facilitate retries in case of intermittent failure.
 //
-// Saving a session is highly ...
+// A session should always be saved before sending newly obtained ciphertext to
+// a peer, as well as after decrypting one or more received messages.
 // ---
 // `s` is the session to save.
 CBoxResult cbox_session_save(CBoxSession * s);
@@ -211,7 +233,7 @@ char const * cbox_session_id(CBoxSession const * s);
 
 // Close a session, freeing the memory associated with it.
 //
-// Note: After a session has been closed, it must no longer be used.
+// After a session has been closed, it must no longer be used.
 void cbox_session_close(CBoxSession * s);
 
 // Delete an existing session.
@@ -219,32 +241,55 @@ void cbox_session_close(CBoxSession * s);
 // If the session does not exist, this function does nothing.
 CBoxResult cbox_session_delete(CBox * b, char const * sid);
 
-// Encrypt a plaaintext message.
-//
-// TODO
-CBoxResult cbox_encrypt(CBoxSession * s, uint8_t const * plain, size_t plain_len, CBoxVec ** cipher);
+// Encrypt a plaintext message.
+// ---
+// `s` is the session to use for encryption.
+// `plain` is the plaintext to encrypt.
+// `plain_len` is the length of `plain`.
+// `cipher` is the pointer to point at the resulting ciphertext.
+CBoxResult cbox_encrypt(CBoxSession * s,
+                        uint8_t const * plain,
+                        size_t plain_len,
+                        CBoxVec ** cipher);
 
 // Decrypt a ciphertext nessage.
-//
-// TODO
-CBoxResult cbox_decrypt(CBoxSession * s, uint8_t const * cipher, size_t cipher_len, CBoxVec ** plain);
+// ---
+// `s` is the session to use for decryption.
+// `cipher` is the ciphertext to decrypt.
+// `cipher_len` is the length of `cipher`.
+// `plain` is the pointer to point at the resulting plaintext.
+CBoxResult cbox_decrypt(CBoxSession * s,
+                        uint8_t const * cipher,
+                        size_t cipher_len,
+                        CBoxVec ** plain);
 
 // Get the public key fingerprint of the local identity.
 //
-// The fingerprint is represented as a hex-encoded byte vector.
+// The fingerprint is represented as a hex-encoded byte sequence.
 // ---
 // `b` is the box from which to obtain the fingerprint.
-//
-// `fp` is the target pointer for the fingerprint.
+// `fp` is the pointer to point at the fingerprint.
 void cbox_fingerprint_local(CBox const * b, CBoxVec ** fp);
 
 // Get the public key fingerprint of the remote identity associated with
 // the given session.
+//
+// The fingerprint is represented as a hex-encoded byte sequence.
 // ---
-// TODO
+// `s` is the session from which to obtain the fingerprint of the remote peer.
+// `fp` is the pointer to point at the fingerprint.
 void cbox_fingerprint_remote(CBoxSession const * s, CBoxVec ** fp);
 
+///////////////
+// Utilities ////////////////////////////////////////////////////////////////
+
 // Generate `len` cryptographically strong random bytes.
+//
+// Returns a pointer to the allocated random bytes.
+// ---
+// `b` is the CBox that serves as the initialised context for obtaining
+// randomness.
+// `len` is the number of random bytes to generate.
 CBoxVec * cbox_random_bytes(CBox const * b, size_t len);
 
 
