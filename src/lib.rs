@@ -5,10 +5,13 @@
 
 #![feature(box_raw)]
 
+extern crate byteorder;
+extern crate cbor;
 extern crate libc;
 extern crate proteus;
 
 mod log;
 mod store;
+mod identity;
 
 pub mod api;

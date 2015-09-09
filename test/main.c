@@ -72,6 +72,11 @@ void test_basics(CBox * alice_box, CBox * bob_box) {
     rc = cbox_session_get(bob_box, "bob", &bob);
     assert(rc == CBOX_SUCCESS);
 
+    // unknown session
+    CBoxSession * unknown = NULL;
+    rc = cbox_session_get(alice_box, "unknown", &unknown);
+    assert(rc == CBOX_NO_SESSION);
+
     // Cleanup
     cbox_vec_free(cipher);
     cbox_vec_free(plain);
@@ -233,13 +238,139 @@ void test_delete_session(CBox * alice_box, CBox * bob_box) {
     printf("OK\n");
 }
 
+void test_box_reopen() {
+    printf("test_box_reopen ... ");
+    CBoxResult rc = CBOX_SUCCESS;
+    char tmp[] = "/tmp/cbox_test_reopenXXXXXX";
+    char * dir = mkdtemp(tmp);
+    assert(dir != NULL);
+
+    CBox * box = NULL;
+    rc = cbox_file_open(dir, &box);
+    assert(rc == CBOX_SUCCESS);
+    assert(box != NULL);
+
+    cbox_close(box);
+
+    rc = cbox_file_open(dir, &box);
+    assert(rc == CBOX_SUCCESS);
+    assert(box != NULL);
+
+    cbox_close(box);
+    printf("OK\n");
+}
+
+void test_external_identity() {
+    printf("test_external_identity ... ");
+    CBoxResult rc = CBOX_SUCCESS;
+    char tmp[] = "/tmp/cbox_test_external_identityXXXXXX";
+    char * dir = mkdtemp(tmp);
+    assert(dir != NULL);
+
+    CBox * box = NULL;
+    rc = cbox_file_open(dir, &box);
+    assert(rc == CBOX_SUCCESS);
+    assert(box != NULL);
+
+    CBoxVec * id = NULL;
+    rc = cbox_identity_copy(box, &id);
+    assert(rc == CBOX_SUCCESS);
+    assert(id != NULL);
+
+    cbox_close(box);
+
+    // "downgrade" to public local identity
+    rc = cbox_file_open_with(dir, cbox_vec_data(id), cbox_vec_len(id), CBOX_IDENTITY_PUBLIC, &box);
+    assert(rc == CBOX_SUCCESS);
+    cbox_close(box);
+
+    // not providing the full identity yields an error
+    rc = cbox_file_open(dir, &box);
+    assert(rc == CBOX_IDENTITY_ERROR);
+
+    // open in externally managed mode
+    rc = cbox_file_open_with(dir, cbox_vec_data(id), cbox_vec_len(id), CBOX_IDENTITY_PUBLIC, &box);
+    assert(rc == CBOX_SUCCESS);
+    assert(box != NULL);
+
+    cbox_close(box);
+
+    // "upgrade" to full local identity
+    rc = cbox_file_open_with(dir, cbox_vec_data(id), cbox_vec_len(id), CBOX_IDENTITY_COMPLETE, &box);
+    assert(rc == CBOX_SUCCESS);
+    cbox_close(box);
+
+    rc = cbox_file_open(dir, &box);
+    assert(rc == CBOX_SUCCESS);
+    cbox_close(box);
+
+    cbox_vec_free(id);
+
+    printf("OK\n");
+}
+
+void test_wrong_identity() {
+    printf("test_wrong_identity ... ");
+    CBoxResult rc = CBOX_SUCCESS;
+
+    char tmp1[] = "/tmp/cbox_test_wrong_identityXXXXXX";
+    char * dir1 = mkdtemp(tmp1);
+    assert(dir1 != NULL);
+
+    char tmp2[] = "/tmp/cbox_test_wrong_identityXXXXXX";
+    char * dir2 = mkdtemp(tmp2);
+    assert(dir2 != NULL);
+
+    CBox * box1 = NULL;
+    rc = cbox_file_open(dir1, &box1);
+    assert(rc == CBOX_SUCCESS);
+    assert(box1 != NULL);
+
+    CBox * box2 = NULL;
+    rc = cbox_file_open(dir2, &box2);
+    assert(rc == CBOX_SUCCESS);
+    assert(box2 != NULL);
+
+    CBoxVec * id1 = NULL;
+    rc = cbox_identity_copy(box1, &id1);
+    assert(rc == CBOX_SUCCESS);
+    assert(id1 != NULL);
+
+    CBoxVec * id2 = NULL;
+    rc = cbox_identity_copy(box2, &id2);
+    assert(rc == CBOX_SUCCESS);
+    assert(id2 != NULL);
+
+    cbox_close(box1);
+    cbox_close(box2);
+
+    // Wrong identity triggers an error
+    rc = cbox_file_open_with(dir1, cbox_vec_data(id2), cbox_vec_len(id2), CBOX_IDENTITY_PUBLIC, &box1);
+    assert(rc == CBOX_IDENTITY_ERROR);
+    rc = cbox_file_open_with(dir2, cbox_vec_data(id1), cbox_vec_len(id1), CBOX_IDENTITY_PUBLIC, &box2);
+    assert(rc == CBOX_IDENTITY_ERROR);
+
+    rc = cbox_file_open_with(dir1, cbox_vec_data(id1), cbox_vec_len(id1), CBOX_IDENTITY_PUBLIC, &box1);
+    assert(rc == CBOX_SUCCESS);
+    rc = cbox_file_open_with(dir2, cbox_vec_data(id2), cbox_vec_len(id2), CBOX_IDENTITY_PUBLIC, &box2);
+    assert(rc == CBOX_SUCCESS);
+
+    cbox_close(box1);
+    cbox_close(box2);
+
+    cbox_vec_free(id1);
+    cbox_vec_free(id2);
+
+    printf("OK\n");
+}
+
 int main() {
-    // Setup Alice's & Bob's crypto boxes and identities
+    // Setup Alice's & Bob's crypto boxes
     char alice_tmp[] = "/tmp/cbox_test_aliceXXXXXX";
     char * alice_dir = mkdtemp(alice_tmp);
     assert(alice_dir != NULL);
 
-    char bob_tmp[]   = "/tmp/cbox_test_bobXXXXXX";
+    char bob_tmp[] = "/tmp/cbox_test_bobXXXXXX";
     char * bob_dir = mkdtemp(bob_tmp);
     assert(bob_dir != NULL);
 
@@ -264,6 +395,9 @@ int main() {
     test_last_prekey(alice_box, bob_box);
     test_duplicate_msg(alice_box, bob_box);
     test_delete_session(alice_box, bob_box);
+    test_box_reopen();
+    test_external_identity();
+    test_wrong_identity();
 
     // Cleanup
     cbox_close(alice_box);
