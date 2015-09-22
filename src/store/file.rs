@@ -133,8 +133,10 @@ impl Store for FileStore {
     }
 }
 
-impl PreKeyStore<StorageError> for FileStore {
-    fn prekey(&self, id: PreKeyId) -> StorageResult<Option<PreKey>> {
+impl PreKeyStore for FileStore {
+    type Error = StorageError;
+
+    fn prekey(&mut self, id: PreKeyId) -> StorageResult<Option<PreKey>> {
         let path = self.prekey_dir.join(&id.value().to_string());
         match try!(load_file(&path)) {
             Some(b) => PreKey::deserialise(&b).map_err(From::from).map(Some),

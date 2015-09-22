@@ -43,7 +43,7 @@ pub enum CBoxIdentityMode {
 
 #[no_mangle]
 pub struct CBox {
-    store: Box<Store>,
+    store: Box<Store<Error=StorageError>>,
     ident: IdentityKeyPair
 }
 
@@ -189,18 +189,20 @@ impl<'r> CBoxSession<'r> {
 }
 
 struct ReadOnlyPks<'r> {
-    store:       &'r (Store + 'r),
+    store:       &'r mut (Store<Error=StorageError> + 'r),
     pub prekeys: Vec<PreKeyId>
 }
 
 impl<'r> ReadOnlyPks<'r> {
-    pub fn new(store: &'r Store) -> ReadOnlyPks {
+    pub fn new(store: &'r mut Store<Error=StorageError>) -> ReadOnlyPks {
         ReadOnlyPks { store: store, prekeys: Vec::new() }
     }
 }
 
-impl<'r> PreKeyStore<StorageError> for ReadOnlyPks<'r> {
-    fn prekey(&self, id: PreKeyId) -> StorageResult<Option<PreKey>> {
+impl<'r> PreKeyStore for ReadOnlyPks<'r> {
+    type Error = StorageError;
+
+    fn prekey(&mut self, id: PreKeyId) -> StorageResult<Option<PreKey>> {
         if self.prekeys.contains(&id) {
             Ok(None)
         } else {
@@ -222,11 +224,11 @@ fn cbox_session_init_from_prekey(c_box:        *mut   CBox,
                                  c_prekey_len: size_t,
                                  c_session:    *mut *mut CBoxSession) -> CBoxResult
 {
-    let cbox   = &*c_box;
+    let cbox   = &mut *c_box;
     let sid    = try_unwrap!(SID::from_raw(c_sid));
     let prekey = try_unwrap!(dec_raw(&c_prekey, c_prekey_len as usize, PreKeyBundle::deserialise));
     let sess   = Session::init_from_prekey(&cbox.ident, prekey);
-    let pstore = ReadOnlyPks::new(&*cbox.store);
+    let pstore = ReadOnlyPks::new(&mut *cbox.store);
     let csess  = CBoxSession::new(c_box, sid, sess, pstore);
     *c_session = Box::into_raw(Box::new(csess));
     CBoxResult::Success
@@ -241,10 +243,10 @@ fn cbox_session_init_from_message(c_box:        *mut CBox,
                                   c_sess:       *mut *mut CBoxSession,
                                   c_plain:      *mut *mut CBoxVec) -> CBoxResult
 {
-    let cbox   = &*c_box;
+    let cbox   = &mut *c_box;
     let sid    = try_unwrap!(SID::from_raw(c_sid));
     let env    = try_unwrap!(dec_raw(&c_cipher, c_cipher_len as usize, Envelope::deserialise));
-    let mut ps = ReadOnlyPks::new(&*cbox.store);
+    let mut ps = ReadOnlyPks::new(&mut *cbox.store);
     let (s, p) = try_unwrap!(Session::init_from_message(&cbox.ident, &mut ps, &env));
     let csess  = CBoxSession::new(c_box, sid, s, ps);
     *c_plain   = CBoxVec::from_vec(p);
@@ -255,10 +257,10 @@ fn cbox_session_init_from_message(c_box:        *mut CBox,
 #[no_mangle]
 pub unsafe extern
 fn cbox_session_get(c_box: *mut CBox, c_sid: *const c_char, c_sess: *mut *mut CBoxSession) -> CBoxResult {
-    let cbox   = &*c_box;
+    let cbox   = &mut *c_box;
     let sid    = try_unwrap!(SID::from_raw(c_sid));
     let sess   = try_unwrap!(cbox.session(&sid.string));
-    let pstore = ReadOnlyPks::new(&*cbox.store);
+    let pstore = ReadOnlyPks::new(&mut *(*c_box).store);
     let csess  = CBoxSession::new(c_box, sid, sess, pstore);
     *c_sess    = Box::into_raw(Box::new(csess));
     CBoxResult::Success
@@ -387,7 +389,8 @@ pub enum CBoxResult {
     Utf8Error             = 10,
     NulError              = 11,
     EncodeError           = 12,
-    IdentityError         = 13
+    IdentityError         = 13,
+    PreKeyNotFound        = 14
 }
 
 impl<E: Error> From<DecryptError<E>> for CBoxResult {
@@ -399,6 +402,7 @@ impl<E: Error> From<DecryptError<E>> for CBoxResult {
             DecryptError::DuplicateMessage        => CBoxResult::DuplicateMessage,
             DecryptError::TooDistantFuture        => CBoxResult::TooDistantFuture,
             DecryptError::OutdatedMessage         => CBoxResult::OutdatedMessage,
+            DecryptError::PreKeyNotFound(_)       => CBoxResult::PreKeyNotFound,
             DecryptError::PreKeyStoreError(ref e) => {
                 log::error(e);
                 CBoxResult::StorageError
