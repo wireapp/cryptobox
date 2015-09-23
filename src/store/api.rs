@@ -16,7 +16,7 @@ use std::io;
 
 pub type StorageResult<T> = Result<T, StorageError>;
 
-pub trait Store: PreKeyStore<StorageError> {
+pub trait Store: PreKeyStore {
     fn load_session<'r>(&self, li: &'r IdentityKeyPair, id: &str) -> StorageResult<Option<Session<'r>>>;
     fn save_session(&self, id: &str, s: &Session) -> StorageResult<()>;
     fn delete_session(&self, id: &str) -> StorageResult<()>;

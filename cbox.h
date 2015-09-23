@@ -73,7 +73,11 @@ typedef enum {
 
     // A CBox has been opened with an incomplete or mismatching identity.
     // This is typically a programmer error.
-    CBOX_IDENTITY_ERROR          = 13
+    CBOX_IDENTITY_ERROR          = 13,
+
+    // An attempt was made to initialise a new session with a prekey ID
+    // for which no prekey could be found.
+    CBOX_PREKEY_NOT_FOUND        = 14
 } CBoxResult;
 
 //////////////////////

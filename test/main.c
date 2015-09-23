@@ -125,7 +125,7 @@ void test_prekey_removal(CBox * alice_box, CBox * bob_box) {
     cbox_session_close(bob);
     cbox_vec_free(plain);
     rc = cbox_session_init_from_message(bob_box, "bob", cbox_vec_data(cipher), cbox_vec_len(cipher), &bob, &plain);
-    assert(rc == CBOX_INVALID_MESSAGE);
+    assert(rc == CBOX_PREKEY_NOT_FOUND);
 
     // Cleanup
     cbox_vec_free(bob_prekey);
