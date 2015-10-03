@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-set -e
-
-cd /usr/lib && ln -s libcryptobox-*.so libcryptobox.so

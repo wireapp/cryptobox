@@ -6,8 +6,8 @@
 use byteorder;
 use identity::Identity;
 use proteus::{DecodeError, EncodeError};
-use proteus::keys::{IdentityKeyPair, PreKey};
-use proteus::session::{Session, PreKeyStore};
+use proteus::keys::{IdentityKeyPair, PreKey, PreKeyId};
+use proteus::session::Session;
 use std::error::Error;
 use std::fmt;
 use std::io;
@@ -16,13 +16,15 @@ use std::io;
 
 pub type StorageResult<T> = Result<T, StorageError>;
 
-pub trait Store: PreKeyStore {
+pub trait Store {
     fn load_session<'r>(&self, li: &'r IdentityKeyPair, id: &str) -> StorageResult<Option<Session<'r>>>;
     fn save_session(&self, id: &str, s: &Session) -> StorageResult<()>;
     fn delete_session(&self, id: &str) -> StorageResult<()>;
     fn load_identity<'s>(&self) -> StorageResult<Option<Identity<'s>>>;
     fn save_identity(&self, id: &Identity) -> StorageResult<()>;
+    fn load_prekey(&self, id: PreKeyId) -> StorageResult<Option<PreKey>>;
     fn add_prekey(&self, key: &PreKey) -> StorageResult<()>;
+    fn delete_prekey(&self, id: PreKeyId) -> StorageResult<()>;
 }
 
 // Errors ///////////////////////////////////////////////////////////////////

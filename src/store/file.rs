@@ -6,7 +6,7 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use identity::Identity;
 use proteus::keys::{PreKey, PreKeyId, IdentityKeyPair};
-use proteus::session::{Session, PreKeyStore};
+use proteus::session::Session;
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::fs::{self, File};
@@ -35,8 +35,7 @@ impl FileStore {
             identity_dir: root.join("identities")
         };
 
-        let version = try!(FileStore::read_version(&fs.root_dir));
-        match version {
+        match try!(FileStore::read_version(&fs.root_dir)) {
             Some(v) => { try!(FileStore::migrate(v)); return Ok(fs) },
             None    => ()
         }
@@ -131,12 +130,8 @@ impl Store for FileStore {
         let path = self.prekey_dir.join(&key.key_id.value().to_string());
         write_file(&path, &try!(key.serialise()), true)
     }
-}
 
-impl PreKeyStore for FileStore {
-    type Error = StorageError;
-
-    fn prekey(&mut self, id: PreKeyId) -> StorageResult<Option<PreKey>> {
+    fn load_prekey(&self, id: PreKeyId) -> StorageResult<Option<PreKey>> {
         let path = self.prekey_dir.join(&id.value().to_string());
         match try!(load_file(&path)) {
             Some(b) => PreKey::deserialise(&b).map_err(From::from).map(Some),
@@ -144,7 +139,7 @@ impl PreKeyStore for FileStore {
         }
     }
 
-    fn remove(&mut self, id: PreKeyId) -> StorageResult<()> {
+    fn delete_prekey(&self, id: PreKeyId) -> StorageResult<()> {
         let path = self.prekey_dir.join(&id.value().to_string());
         remove_file(&path)
     }

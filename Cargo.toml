@@ -1,20 +1,15 @@
 [package]
 name         = "cryptobox"
-version      = "0.4.0"
+version      = "0.5.0"
 authors      = ["Roman S. Borschel <roman@pkaboo.org>", "Toralf Wittner <tw@dtex.org>"]
-description  = "High-level C API with persistent storage for the proteus implementation of the axolotl protocol."
+description  = "High-level API for proteus with persistent storage."
 homepage     = "https://github.com/romanb/cryptobox"
 repository   = "git@github.com:romanb/cryptobox.git"
 license      = "MPL-2.0"
 
-[lib]
-name         = "cryptobox"
-crate-type   = ["dylib"]
-
 [dependencies]
-byteorder    = ">  0.3.0"
-cbor-codec   = ">= 0.1.0"
-libc         = ">  0.1.0"
+byteorder  = ">  0.3.0"
+cbor-codec = ">= 0.4.1"
 
 [dependencies.proteus]
 git = "https://github.com/twittner/proteus"
