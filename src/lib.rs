@@ -21,12 +21,10 @@ use std::error::Error;
 use std::fmt;
 use std::mem;
 use std::path::Path;
-use store::api::{Store, StorageError, StorageResult};
-use store::file::FileStore;
+use store::Store;
+use store::file::{FileStore, FileStoreError};
 
 // CBox /////////////////////////////////////////////////////////////////////
-
-pub type CBoxResult<A> = Result<A, CBoxError>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IdentityMode {
@@ -40,7 +38,7 @@ pub struct CBox<S> {
 }
 
 impl CBox<FileStore> {
-    pub fn file_open(path: &Path) -> CBoxResult<CBox<FileStore>> {
+    pub fn file_open(path: &Path) -> CBoxResult<CBox<FileStore>, FileStoreError> {
         proteus::init();
         let store = try!(FileStore::new(path));
         let ident = match try!(store.load_identity()) {
@@ -55,7 +53,7 @@ impl CBox<FileStore> {
         Ok(CBox { ident: ident, store: store })
     }
 
-    pub fn file_open_with(path: &Path, ident: IdentityKeyPair, mode: IdentityMode) -> CBoxResult<CBox<FileStore>> {
+    pub fn file_open_with(path: &Path, ident: IdentityKeyPair, mode: IdentityMode) -> CBoxResult<CBox<FileStore>, FileStoreError> {
         proteus::init();
         let store = try!(FileStore::new(path));
         match try!(store.load_identity()) {
@@ -87,46 +85,7 @@ impl CBox<FileStore> {
 }
 
 impl<S: Store> CBox<S> {
-    pub fn session_from_message(&self, sid: String, envelope: &[u8]) -> CBoxResult<(CBoxSession<S>, Vec<u8>)> {
-        let env    = try!(Envelope::deserialise(envelope));
-        let mut st = ReadOnlyStore::new(&self.store);
-        let (s, p) = try!(Session::init_from_message(&self.ident, &mut st, &env));
-        Ok((CBoxSession { sident: sid, store: st, session: s }, p))
-    }
-
-    pub fn session_load(&self, sid: String) -> CBoxResult<Option<CBoxSession<S>>> {
-        match try!(self.store.load_session(&self.ident, &sid)) {
-            None    => Ok(None),
-            Some(s) => Ok(Some(CBoxSession {
-                sident:  sid,
-                store:   ReadOnlyStore::new(&self.store),
-                session: s
-            }))
-        }
-    }
-
-    pub fn session_save(&self, s: &mut CBoxSession<S>) -> CBoxResult<()> {
-        try!(self.store.save_session(&s.sident, &s.session));
-        for p in s.removed_prekeys() {
-            try!(self.store.delete_prekey(p))
-        }
-        Ok(())
-    }
-
-    pub fn session_delete(&self, sid: &str) -> CBoxResult<()> {
-        try!(self.store.delete_session(sid));
-        Ok(())
-    }
-
-    pub fn new_prekey(&self, id: PreKeyId) -> CBoxResult<PreKeyBundle> {
-        let pk = PreKey::new(id);
-        try!(self.store.add_prekey(&pk));
-        Ok(PreKeyBundle::new(self.ident.public_key, &pk))
-    }
-}
-
-impl<S> CBox<S> {
-    pub fn session_from_prekey(&self, sid: String, key: &[u8]) -> CBoxResult<CBoxSession<S>> {
+    pub fn session_from_prekey(&self, sid: String, key: &[u8]) -> CBoxResult<CBoxSession<S>, S::Error> {
         let prekey = try!(PreKeyBundle::deserialise(key));
         Ok(CBoxSession {
             sident:  sid,
@@ -135,6 +94,46 @@ impl<S> CBox<S> {
         })
     }
 
+    pub fn session_from_message(&self, sid: String, envelope: &[u8]) -> CBoxResult<(CBoxSession<S>, Vec<u8>), S::Error> {
+        let env    = try!(Envelope::deserialise(envelope));
+        let mut st = ReadOnlyStore::new(&self.store);
+        let (s, p) = try!(Session::init_from_message(&self.ident, &mut st, &env));
+        Ok((CBoxSession { sident: sid, store: st, session: s }, p))
+    }
+
+    pub fn session_load(&self, sid: String) -> CBoxResult<Option<CBoxSession<S>>, S::Error> {
+        match self.store.load_session(&self.ident, &sid) {
+            Ok(None)    => Ok(None),
+            Ok(Some(s)) => Ok(Some(CBoxSession {
+                sident:  sid,
+                store:   ReadOnlyStore::new(&self.store),
+                session: s
+            })),
+            Err(e) => Err(CBoxError::StorageError(e))
+        }
+    }
+
+    pub fn session_save(&self, s: &mut CBoxSession<S>) -> CBoxResult<(), S::Error> {
+        try!(self.store.save_session(&s.sident, &s.session).map_err(CBoxError::StorageError));
+        for p in s.removed_prekeys() {
+            try!(self.store.delete_prekey(p).map_err(CBoxError::StorageError));
+        }
+        Ok(())
+    }
+
+    pub fn session_delete(&self, sid: &str) -> CBoxResult<(), S::Error> {
+        try!(self.store.delete_session(sid).map_err(CBoxError::StorageError));
+        Ok(())
+    }
+
+    pub fn new_prekey(&self, id: PreKeyId) -> CBoxResult<PreKeyBundle, S::Error> {
+        let pk = PreKey::new(id);
+        try!(self.store.add_prekey(&pk).map_err(CBoxError::StorageError));
+        Ok(PreKeyBundle::new(self.ident.public_key, &pk))
+    }
+}
+
+impl<S> CBox<S> {
     pub fn identity(&self) -> &IdentityKeyPair {
         &self.ident
     }
@@ -157,11 +156,11 @@ pub struct CBoxSession<'r, S: 'r> {
 }
 
 impl<'r, S: Store> CBoxSession<'r, S> {
-    pub fn encrypt(&mut self, plain: &[u8]) -> CBoxResult<Vec<u8>> {
+    pub fn encrypt(&mut self, plain: &[u8]) -> CBoxResult<Vec<u8>, S::Error> {
         Ok(try!(self.session.encrypt(plain).and_then(|m| m.serialise())))
     }
 
-    pub fn decrypt(&mut self, cipher: &[u8]) -> CBoxResult<Vec<u8>> {
+    pub fn decrypt(&mut self, cipher: &[u8]) -> CBoxResult<Vec<u8>, S::Error> {
         let env = try!(Envelope::deserialise(cipher));
         let txt = try!(self.session.decrypt(&mut self.store, &env));
         Ok(txt)
@@ -200,9 +199,9 @@ impl<'r, S> ReadOnlyStore<'r, S> {
 }
 
 impl<'r, S: Store> PreKeyStore for ReadOnlyStore<'r, S> {
-    type Error = StorageError;
+    type Error = S::Error;
 
-    fn prekey(&mut self, id: PreKeyId) -> StorageResult<Option<PreKey>> {
+    fn prekey(&mut self, id: PreKeyId) -> Result<Option<PreKey>, S::Error> {
         if self.removed.contains(&id) {
             Ok(None)
         } else {
@@ -210,7 +209,7 @@ impl<'r, S: Store> PreKeyStore for ReadOnlyStore<'r, S> {
         }
     }
 
-    fn remove(&mut self, id: PreKeyId) -> StorageResult<()> {
+    fn remove(&mut self, id: PreKeyId) -> Result<(), S::Error> {
         self.removed.push(id);
         Ok(())
     }
@@ -218,16 +217,18 @@ impl<'r, S: Store> PreKeyStore for ReadOnlyStore<'r, S> {
 
 // CBoxError ////////////////////////////////////////////////////////////////
 
+pub type CBoxResult<A, E> = Result<A, CBoxError<E>>;
+
 #[derive(Debug)]
-pub enum CBoxError {
-    DecryptError(DecryptError<StorageError>),
-    StorageError(StorageError),
+pub enum CBoxError<E> {
+    DecryptError(DecryptError<E>),
+    StorageError(E),
     DecodeError(DecodeError),
     EncodeError(EncodeError),
     IdentityError
 }
 
-impl fmt::Display for CBoxError {
+impl<E: fmt::Display> fmt::Display for CBoxError<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
             CBoxError::DecryptError(ref e) => write!(f, "CBoxError: decrypt error: {}", e),
@@ -239,41 +240,42 @@ impl fmt::Display for CBoxError {
     }
 }
 
-impl Error for CBoxError {
+impl<E: Error> Error for CBoxError<E> {
     fn description(&self) -> &str {
         "CBoxError"
     }
 
     fn cause(&self) -> Option<&Error> {
         match *self {
+            CBoxError::DecryptError(ref e) => Some(e),
             CBoxError::StorageError(ref e) => Some(e),
             CBoxError::DecodeError(ref e)  => Some(e),
             CBoxError::EncodeError(ref e)  => Some(e),
-            _                              => None
+            CBoxError::IdentityError       => None
         }
     }
 }
 
-impl From<DecryptError<StorageError>> for CBoxError {
-    fn from(err: DecryptError<StorageError>) -> CBoxError {
-        CBoxError::DecryptError(err)
-    }
-}
-
-impl From<StorageError> for CBoxError {
-    fn from(e: StorageError) -> CBoxError {
+impl From<FileStoreError> for CBoxError<FileStoreError> {
+    fn from(e: FileStoreError) -> CBoxError<FileStoreError> {
         CBoxError::StorageError(e)
     }
 }
 
-impl From<DecodeError> for CBoxError {
-    fn from(e: DecodeError) -> CBoxError {
+impl<E> From<DecryptError<E>> for CBoxError<E> {
+    fn from(e: DecryptError<E>) -> CBoxError<E> {
+        CBoxError::DecryptError(e)
+    }
+}
+
+impl<E> From<DecodeError> for CBoxError<E> {
+    fn from(e: DecodeError) -> CBoxError<E> {
         CBoxError::DecodeError(e)
     }
 }
 
-impl From<EncodeError> for CBoxError {
-    fn from(e: EncodeError) -> CBoxError {
+impl<E> From<EncodeError> for CBoxError<E> {
+    fn from(e: EncodeError) -> CBoxError<E> {
         CBoxError::EncodeError(e)
     }
 }
