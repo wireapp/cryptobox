@@ -1,0 +1,6 @@
+Package: cryptobox
+Version: <<VERSION_NUMBER>>+<<BUILD_NUMBER>>
+Maintainer: Roman S. Borschel <roman@pkaboo.org>
+Architecture: amd64
+Depends: libsodium-dev
+Description: High-level C API with persistent storage for proteus

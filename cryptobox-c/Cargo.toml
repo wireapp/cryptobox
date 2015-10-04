@@ -1,0 +1,22 @@
+[package]
+name         = "cryptobox-c"
+version      = "0.5.0"
+authors      = ["Roman S. Borschel <roman@pkaboo.org>", "Toralf Wittner <tw@dtex.org>"]
+description  = "C-FFI to cryptobox"
+homepage     = "https://github.com/romanb/cryptobox-c"
+repository   = "git@github.com:romanb/cryptobox-c.git"
+license      = "MPL-2.0"
+
+[lib]
+name         = "cryptobox"
+crate-type   = ["dylib"]
+
+[dependencies]
+libc = ">  0.1.0"
+
+[dependencies.proteus]
+git    = "https://github.com/twittner/proteus"
+branch = "develop"
+
+[dependencies.cryptobox]
+path    = "../cryptobox"
