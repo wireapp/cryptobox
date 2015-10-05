@@ -31,7 +31,7 @@ typedef enum {
     CBOX_STORAGE_ERROR           = 1,
 
     // A CBoxSession was not found.
-    CBOX_NO_SESSION              = 2,
+    CBOX_SESSION_NOT_FOUND       = 2,
 
     // An error occurred during binary decoding of a data structure.
     CBOX_DECODE_ERROR            = 3,
@@ -204,7 +204,7 @@ CBoxResult cbox_session_init_from_message(CBox * b,
 
 // Lookup a session by ID.
 //
-// If the session is not found, `CBOX_NO_SESSION` is returned and `s` will
+// If the session is not found, `CBOX_SESSION_NOT_FOUND` is returned and `s` will
 // be unchanged.
 // ---
 // `b` is the box in which to look for the session. The session will be bound

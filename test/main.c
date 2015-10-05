@@ -75,7 +75,7 @@ void test_basics(CBox * alice_box, CBox * bob_box) {
     // unknown session
     CBoxSession * unknown = NULL;
     rc = cbox_session_get(alice_box, "unknown", &unknown);
-    assert(rc == CBOX_NO_SESSION);
+    assert(rc == CBOX_SESSION_NOT_FOUND);
 
     // Cleanup
     cbox_vec_free(cipher);
@@ -230,7 +230,7 @@ void test_delete_session(CBox * alice_box, CBox * bob_box) {
     assert(rc == CBOX_SUCCESS);
 
     rc = cbox_session_get(alice_box, "alice", &alice);
-    assert(rc == CBOX_NO_SESSION);
+    assert(rc == CBOX_SESSION_NOT_FOUND);
 
     // no-op, session does not exist
     rc = cbox_session_delete(alice_box, "alice");

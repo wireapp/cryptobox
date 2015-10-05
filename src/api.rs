@@ -51,7 +51,7 @@ impl CBox {
     fn session(&self, sid: &str) -> Result<Session, CBoxResult> {
         match try!(self.store.load_session(&self.ident, sid)) {
             Some(s) => Ok(s),
-            None    => Err(CBoxResult::NoSession)
+            None    => Err(CBoxResult::SessionNotFound)
         }
     }
 }
@@ -378,7 +378,7 @@ pub unsafe extern fn cbox_vec_len(v: *const CBoxVec) -> size_t {
 pub enum CBoxResult {
     Success               = 0,
     StorageError          = 1,
-    NoSession             = 2,
+    SessionNotFound       = 2,
     DecodeError           = 3,
     RemoteIdentityChanged = 4,
     InvalidSignature      = 5,
