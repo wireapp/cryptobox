@@ -12,5 +12,5 @@ byteorder  = ">  0.3.0"
 cbor-codec = ">= 0.4.1"
 
 [dependencies.proteus]
-git = "https://github.com/twittner/proteus"
-tag = "v0.3.0"
+git    = "https://github.com/twittner/proteus"
+branch = "develop"

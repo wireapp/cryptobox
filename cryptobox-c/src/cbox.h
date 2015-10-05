@@ -204,7 +204,7 @@ CBoxResult cbox_session_init_from_message(CBox const * b,
 
 // Lookup a session by ID.
 //
-// If the session is not found, `CBOX_NO_SESSION` is returned and `s` will
+// If the session is not found, `CBOX_SESSION_NOT_FOUND` is returned and `s` will
 // be unchanged.
 // ---
 // `b` is the box in which to look for the session. The session will be bound
