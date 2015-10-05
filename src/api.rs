@@ -3,12 +3,14 @@
 // the MPL was not distributed with this file, You
 // can obtain one at http://mozilla.org/MPL/2.0/.
 
+use identity::Identity;
 use libc::*;
+use log;
 use proteus::keys::{self, IdentityKeyPair, PreKey, PreKeyBundle, PreKeyId};
 use proteus::message::Envelope;
 use proteus::session::{DecryptError, PreKeyStore, Session};
 use proteus::{self, DecodeError, EncodeError};
-use log;
+use std::borrow::Cow;
 use std::boxed::Box;
 use std::error::Error;
 use std::ffi::{CStr, CString, NulError};
@@ -27,11 +29,21 @@ macro_rules! try_unwrap {
     })
 }
 
+// CBoxIdentityMode /////////////////////////////////////////////////////////
+
+#[repr(C)]
+#[no_mangle]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CBoxIdentityMode {
+    Complete = 0,
+    Public   = 1
+}
+
 // CBox /////////////////////////////////////////////////////////////////////
 
 #[no_mangle]
 pub struct CBox {
-    store: Box<Store>,
+    store: Box<Store<Error=StorageError>>,
     ident: IdentityKeyPair
 }
 
@@ -39,7 +51,7 @@ impl CBox {
     fn session(&self, sid: &str) -> Result<Session, CBoxResult> {
         match try!(self.store.load_session(&self.ident, sid)) {
             Some(s) => Ok(s),
-            None    => Err(CBoxResult::NoSession)
+            None    => Err(CBoxResult::SessionNotFound)
         }
     }
 }
@@ -51,18 +63,68 @@ fn cbox_file_open(c_path: *const c_char, c_box: *mut *mut CBox) -> CBoxResult {
     let name  = try_unwrap!(str::from_utf8(CStr::from_ptr(c_path).to_bytes()));
     let path  = Path::new(name);
     let store = try_unwrap!(FileStore::new(path));
-    let ident = try_unwrap!(store.load_identity().and_then(|id| {
-        match id {
-            Some(i) => Ok(i),
-            None    => {
-                let id = IdentityKeyPair::new();
-                try!(store.save_identity(&id));
-                Ok(id)
+    let ident = match try_unwrap!(store.load_identity()) {
+        Some(Identity::Sec(i)) => i.into_owned(),
+        Some(Identity::Pub(_)) => return CBoxResult::IdentityError,
+        None => {
+            let ident = IdentityKeyPair::new();
+            try_unwrap!(store.save_identity(&Identity::Sec(Cow::Borrowed(&ident))));
+            ident
+        }
+    };
+    *c_box = Box::into_raw(Box::new(CBox { store: Box::new(store), ident: ident }));
+    CBoxResult::Success
+}
+
+#[no_mangle]
+pub unsafe extern
+fn cbox_file_open_with(c_path:   *const c_char,
+                       c_id:     *const uint8_t,
+                       c_id_len: size_t,
+                       c_mode:   CBoxIdentityMode,
+                       c_box:    *mut *mut CBox) -> CBoxResult
+{
+    proteus::init();
+    let name  = try_unwrap!(str::from_utf8(CStr::from_ptr(c_path).to_bytes()));
+    let path  = Path::new(name);
+    let store = try_unwrap!(FileStore::new(path));
+    let ident = match try_unwrap!(dec_raw(&c_id, c_id_len as usize, Identity::deserialise)) {
+        Identity::Sec(i) => i.into_owned(),
+        Identity::Pub(_) => return CBoxResult::IdentityError
+    };
+    match try_unwrap!(store.load_identity()) {
+        Some(Identity::Sec(local)) => {
+            if ident.public_key != local.public_key {
+                return CBoxResult::IdentityError
+            }
+            if c_mode == CBoxIdentityMode::Public {
+                try_unwrap!(store.save_identity(&Identity::Pub(Cow::Borrowed(&ident.public_key))))
             }
         }
-    }));
-    let cbox = CBox { store: Box::new(store), ident: ident };
-    *c_box = Box::into_raw(Box::new(cbox));
+        Some(Identity::Pub(local)) => {
+            if ident.public_key != *local {
+                return CBoxResult::IdentityError
+            }
+            if c_mode == CBoxIdentityMode::Complete {
+                try_unwrap!(store.save_identity(&Identity::Sec(Cow::Borrowed(&ident))))
+            }
+        }
+        None => match c_mode {
+            CBoxIdentityMode::Public =>
+                try_unwrap!(store.save_identity(&Identity::Pub(Cow::Borrowed(&ident.public_key)))),
+            CBoxIdentityMode::Complete =>
+                try_unwrap!(store.save_identity(&Identity::Sec(Cow::Borrowed(&ident))))
+        }
+    }
+    *c_box = Box::into_raw(Box::new(CBox { store: Box::new(store), ident: ident }));
+    CBoxResult::Success
+}
+
+#[no_mangle]
+pub unsafe extern
+fn cbox_identity_copy(b: *const CBox, c_ident: *mut *mut CBoxVec) -> CBoxResult {
+    let i = try_unwrap!(Identity::Sec(Cow::Borrowed(&(*b).ident)).serialise());
+    *c_ident = CBoxVec::from_vec(i);
     CBoxResult::Success
 }
 
@@ -81,9 +143,7 @@ pub static CBOX_LAST_PREKEY_ID: c_ushort = u16::MAX;
 pub unsafe extern
 fn cbox_new_prekey(c_box: *mut CBox, c_id: c_ushort, c_bundle: *mut *mut CBoxVec) -> CBoxResult {
     let cbox = &*c_box;
-
     let pk = PreKey::new(PreKeyId::new(c_id));
-
     try_unwrap!(cbox.store.add_prekey(&pk));
 
     let bundle = try_unwrap!(PreKeyBundle::new(cbox.ident.public_key, &pk).serialise());
@@ -129,18 +189,20 @@ impl<'r> CBoxSession<'r> {
 }
 
 struct ReadOnlyPks<'r> {
-    store:       &'r (Store + 'r),
+    store:       &'r mut (Store<Error=StorageError> + 'r),
     pub prekeys: Vec<PreKeyId>
 }
 
 impl<'r> ReadOnlyPks<'r> {
-    pub fn new(store: &'r Store) -> ReadOnlyPks {
+    pub fn new(store: &'r mut Store<Error=StorageError>) -> ReadOnlyPks {
         ReadOnlyPks { store: store, prekeys: Vec::new() }
     }
 }
 
-impl<'r> PreKeyStore<StorageError> for ReadOnlyPks<'r> {
-    fn prekey(&self, id: PreKeyId) -> StorageResult<Option<PreKey>> {
+impl<'r> PreKeyStore for ReadOnlyPks<'r> {
+    type Error = StorageError;
+
+    fn prekey(&mut self, id: PreKeyId) -> StorageResult<Option<PreKey>> {
         if self.prekeys.contains(&id) {
             Ok(None)
         } else {
@@ -156,17 +218,17 @@ impl<'r> PreKeyStore<StorageError> for ReadOnlyPks<'r> {
 
 #[no_mangle]
 pub unsafe extern
-fn cbox_session_init_from_prekey(c_box:         *mut   CBox,
-                                 c_sid:         *const c_char,
-                                 c_prekey:      *const uint8_t,
-                                 c_prekey_len:  size_t,
-                                 c_session:     *mut *const CBoxSession) -> CBoxResult
+fn cbox_session_init_from_prekey(c_box:        *mut   CBox,
+                                 c_sid:        *const c_char,
+                                 c_prekey:     *const uint8_t,
+                                 c_prekey_len: size_t,
+                                 c_session:    *mut *mut CBoxSession) -> CBoxResult
 {
-    let cbox   = &*c_box;
+    let cbox   = &mut *c_box;
     let sid    = try_unwrap!(SID::from_raw(c_sid));
     let prekey = try_unwrap!(dec_raw(&c_prekey, c_prekey_len as usize, PreKeyBundle::deserialise));
     let sess   = Session::init_from_prekey(&cbox.ident, prekey);
-    let pstore = ReadOnlyPks::new(&*cbox.store);
+    let pstore = ReadOnlyPks::new(&mut *cbox.store);
     let csess  = CBoxSession::new(c_box, sid, sess, pstore);
     *c_session = Box::into_raw(Box::new(csess));
     CBoxResult::Success
@@ -181,10 +243,10 @@ fn cbox_session_init_from_message(c_box:        *mut CBox,
                                   c_sess:       *mut *mut CBoxSession,
                                   c_plain:      *mut *mut CBoxVec) -> CBoxResult
 {
-    let cbox   = &*c_box;
+    let cbox   = &mut *c_box;
     let sid    = try_unwrap!(SID::from_raw(c_sid));
     let env    = try_unwrap!(dec_raw(&c_cipher, c_cipher_len as usize, Envelope::deserialise));
-    let mut ps = ReadOnlyPks::new(&*cbox.store);
+    let mut ps = ReadOnlyPks::new(&mut *cbox.store);
     let (s, p) = try_unwrap!(Session::init_from_message(&cbox.ident, &mut ps, &env));
     let csess  = CBoxSession::new(c_box, sid, s, ps);
     *c_plain   = CBoxVec::from_vec(p);
@@ -195,10 +257,10 @@ fn cbox_session_init_from_message(c_box:        *mut CBox,
 #[no_mangle]
 pub unsafe extern
 fn cbox_session_get(c_box: *mut CBox, c_sid: *const c_char, c_sess: *mut *mut CBoxSession) -> CBoxResult {
-    let cbox   = &*c_box;
+    let cbox   = &mut *c_box;
     let sid    = try_unwrap!(SID::from_raw(c_sid));
     let sess   = try_unwrap!(cbox.session(&sid.string));
-    let pstore = ReadOnlyPks::new(&*cbox.store);
+    let pstore = ReadOnlyPks::new(&mut *(*c_box).store);
     let csess  = CBoxSession::new(c_box, sid, sess, pstore);
     *c_sess    = Box::into_raw(Box::new(csess));
     CBoxResult::Success
@@ -226,7 +288,7 @@ fn cbox_session_save(c_sess: *mut CBoxSession) -> CBoxResult {
 #[no_mangle]
 pub unsafe extern
 fn cbox_session_close(c_sess: *mut CBoxSession) {
-    Box::from_raw(c_sess as *mut CBoxSession);
+    Box::from_raw(c_sess);
 }
 
 #[no_mangle]
@@ -316,7 +378,7 @@ pub unsafe extern fn cbox_vec_len(v: *const CBoxVec) -> size_t {
 pub enum CBoxResult {
     Success               = 0,
     StorageError          = 1,
-    NoSession             = 2,
+    SessionNotFound       = 2,
     DecodeError           = 3,
     RemoteIdentityChanged = 4,
     InvalidSignature      = 5,
@@ -326,7 +388,9 @@ pub enum CBoxResult {
     OutdatedMessage       = 9,
     Utf8Error             = 10,
     NulError              = 11,
-    EncodeError           = 12
+    EncodeError           = 12,
+    IdentityError         = 13,
+    PreKeyNotFound        = 14
 }
 
 impl<E: Error> From<DecryptError<E>> for CBoxResult {
@@ -338,6 +402,7 @@ impl<E: Error> From<DecryptError<E>> for CBoxResult {
             DecryptError::DuplicateMessage        => CBoxResult::DuplicateMessage,
             DecryptError::TooDistantFuture        => CBoxResult::TooDistantFuture,
             DecryptError::OutdatedMessage         => CBoxResult::OutdatedMessage,
+            DecryptError::PreKeyNotFound(_)       => CBoxResult::PreKeyNotFound,
             DecryptError::PreKeyStoreError(ref e) => {
                 log::error(e);
                 CBoxResult::StorageError
@@ -384,9 +449,12 @@ impl From<NulError> for CBoxResult {
 // Util /////////////////////////////////////////////////////////////////////
 
 #[no_mangle]
-pub unsafe extern fn cbox_random_bytes(_: *const CBox, n: size_t) -> *mut CBoxVec {
+pub unsafe extern
+fn cbox_random_bytes(_: *const CBox, n: size_t) -> *mut CBoxVec {
     CBoxVec::from_vec(keys::rand_bytes(n as usize))
 }
+
+// Internal /////////////////////////////////////////////////////////////////
 
 unsafe fn dec_raw<A, F>(ptr: & *const c_uchar, len: usize, f: F) -> Result<A, DecodeError>
 where F: Fn(&[u8]) -> Result<A, DecodeError> {

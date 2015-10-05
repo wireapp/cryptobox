@@ -3,8 +3,10 @@
 // the MPL was not distributed with this file, You
 // can obtain one at http://mozilla.org/MPL/2.0/.
 
+use byteorder;
+use identity::Identity;
 use proteus::{DecodeError, EncodeError};
-use proteus::keys::{PreKey, IdentityKeyPair};
+use proteus::keys::{IdentityKeyPair, PreKey};
 use proteus::session::{Session, PreKeyStore};
 use std::error::Error;
 use std::fmt;
@@ -14,12 +16,12 @@ use std::io;
 
 pub type StorageResult<T> = Result<T, StorageError>;
 
-pub trait Store: PreKeyStore<StorageError> {
+pub trait Store: PreKeyStore {
     fn load_session<'r>(&self, li: &'r IdentityKeyPair, id: &str) -> StorageResult<Option<Session<'r>>>;
     fn save_session(&self, id: &str, s: &Session) -> StorageResult<()>;
     fn delete_session(&self, id: &str) -> StorageResult<()>;
-    fn load_identity(&self) -> StorageResult<Option<IdentityKeyPair>>;
-    fn save_identity(&self, id: &IdentityKeyPair) -> StorageResult<()>;
+    fn load_identity<'s>(&self) -> StorageResult<Option<Identity<'s>>>;
+    fn save_identity(&self, id: &Identity) -> StorageResult<()>;
     fn add_prekey(&self, key: &PreKey) -> StorageResult<()>;
 }
 
@@ -60,6 +62,12 @@ impl From<DecodeError> for StorageError {
 
 impl From<EncodeError> for StorageError {
     fn from(e: EncodeError) -> StorageError {
+        StorageError { cause: Box::new(e) }
+    }
+}
+
+impl From<byteorder::Error> for StorageError {
+    fn from(e: byteorder::Error) -> StorageError {
         StorageError { cause: Box::new(e) }
     }
 }

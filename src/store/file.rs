@@ -3,12 +3,20 @@
 // the MPL was not distributed with this file, You
 // can obtain one at http://mozilla.org/MPL/2.0/.
 
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use identity::Identity;
 use proteus::keys::{PreKey, PreKeyId, IdentityKeyPair};
 use proteus::session::{Session, PreKeyStore};
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::fs::{self, File};
 use std::io::{self, Read, Write, ErrorKind};
 use super::api::*;
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+struct Version(u16);
+
+const CURRENT_VERSION: Version = Version(1);
 
 #[derive(Debug)]
 pub struct FileStore {
@@ -27,6 +35,12 @@ impl FileStore {
             identity_dir: root.join("identities")
         };
 
+        let version = try!(FileStore::read_version(&fs.root_dir));
+        match version {
+            Some(v) => { try!(FileStore::migrate(v)); return Ok(fs) },
+            None    => ()
+        }
+
         if !dir_exists(&fs.session_dir) {
             try!(fs::create_dir(&fs.session_dir));
         }
@@ -35,11 +49,50 @@ impl FileStore {
         }
         if !dir_exists(&fs.identity_dir) {
             try!(fs::create_dir(&fs.identity_dir));
+        } else {
+            // Legacy: Migrate old "local_identity"
+            let p = fs.identity_dir.join("local_identity");
+            // 1. load old identity
+            match try!(load_file(&p)) {
+                None    => (),
+                Some(b) => {
+                    let kp = try!(IdentityKeyPair::deserialise(&b));
+                    let i = Identity::Sec(Cow::Borrowed(&kp));
+                    // 2. write new local identity
+                    try!(fs.save_identity(&i));
+                    // 3. delete old identity
+                    try!(remove_file(&p));
+                }
+            };
         }
+
+        try!(FileStore::write_version(&fs.root_dir, CURRENT_VERSION));
 
         Ok(fs)
     }
 
+    fn read_version(root: &PathBuf) -> StorageResult<Option<Version>> {
+        let p = root.join("version");
+        match try!(open_file(&p)) {
+            Some(mut f) => {
+                let v = try!(f.read_u16::<BigEndian>());
+                Ok(Some(Version(v)))
+            }
+            None => Ok(None)
+        }
+    }
+
+    fn write_version(root: &PathBuf, Version(v): Version) -> StorageResult<()> {
+        let p = root.join("version");
+        let mut b = [0;2];
+        try!(b.as_mut().write_u16::<BigEndian>(v));
+        write_file(&p, &b, true)
+    }
+
+    fn migrate(_: Version) -> StorageResult<()> {
+        // Future migrations for v < CURRENT_VERSION go here
+        Ok(())
+    }
 }
 
 impl Store for FileStore {
@@ -53,7 +106,7 @@ impl Store for FileStore {
 
     fn save_session(&self, id: &str, s: &Session) -> StorageResult<()> {
         let path = self.session_dir.join(id);
-        save(&path, &try!(s.serialise()), false)
+        write_file(&path, &try!(s.serialise()), false)
     }
 
     fn delete_session(&self, id: &str) -> StorageResult<()> {
@@ -61,27 +114,29 @@ impl Store for FileStore {
         remove_file(&path)
     }
 
-    fn load_identity(&self) -> StorageResult<Option<IdentityKeyPair>> {
-        let path = self.identity_dir.join("local_identity");
+    fn load_identity<'s>(&self) -> StorageResult<Option<Identity<'s>>> {
+        let path = self.identity_dir.join("local");
         match try!(load_file(&path)) {
-            Some(b) => IdentityKeyPair::deserialise(&b).map_err(From::from).map(Some),
+            Some(b) => Identity::deserialise(&b).map_err(From::from).map(Some),
             None    => Ok(None)
         }
     }
 
-    fn save_identity(&self, id: &IdentityKeyPair) -> StorageResult<()> {
-        let path = self.identity_dir.join("local_identity");
-        save(&path, &try!(id.serialise()), true)
+    fn save_identity(&self, id: &Identity) -> StorageResult<()> {
+        let path = self.identity_dir.join("local");
+        write_file(&path, &try!(id.serialise()), true)
     }
 
     fn add_prekey(&self, key: &PreKey) -> StorageResult<()> {
         let path = self.prekey_dir.join(&key.key_id.value().to_string());
-        save(&path, &try!(key.serialise()), true)
+        write_file(&path, &try!(key.serialise()), true)
     }
 }
 
-impl PreKeyStore<StorageError> for FileStore {
-    fn prekey(&self, id: PreKeyId) -> StorageResult<Option<PreKey>> {
+impl PreKeyStore for FileStore {
+    type Error = StorageError;
+
+    fn prekey(&mut self, id: PreKeyId) -> StorageResult<Option<PreKey>> {
         let path = self.prekey_dir.join(&id.value().to_string());
         match try!(load_file(&path)) {
             Some(b) => PreKey::deserialise(&b).map_err(From::from).map(Some),
@@ -95,20 +150,31 @@ impl PreKeyStore<StorageError> for FileStore {
     }
 }
 
-fn load_file(p: &Path) -> StorageResult<Option<Vec<u8>>> {
-    if !file_exists(p) {
-        return Ok(None)
-    }
+fn open_file(p: &Path) -> StorageResult<Option<File>> {
+    File::open(p).map(Some)
+        .or_else(|e|
+            if e.kind() == ErrorKind::NotFound {
+                Ok(None)
+            } else {
+                Err(e)
+            }
+        ).map_err(From::from)
+}
 
-    let     file = try!(File::open(p));
-    let mut buf  = io::BufReader::new(file);
-    let mut dat  = Vec::new();
+fn load_file(p: &Path) -> StorageResult<Option<Vec<u8>>> {
+    let file = match try!(open_file(p)) {
+        Some(f) => f,
+        None    => return Ok(None)
+    };
+
+    let mut buf = io::BufReader::new(file);
+    let mut dat = Vec::new();
 
     try!(buf.read_to_end(&mut dat));
     Ok(Some(dat))
 }
 
-fn save(p: &Path, bytes: &[u8], sync: bool) -> StorageResult<()> {
+fn write_file(p: &Path, bytes: &[u8], sync: bool) -> StorageResult<()> {
     fn write(path: &Path, bytes: &[u8], sync: bool) -> io::Result<()> {
         let mut file = try!(File::create(&path));
         let mut rs = file.write_all(bytes);
@@ -125,14 +191,6 @@ fn save(p: &Path, bytes: &[u8], sync: bool) -> StorageResult<()> {
     fs::rename(&path, p).map_err(From::from)
 }
 
-fn dir_exists(p: &Path) -> bool {
-    fs::metadata(p).map(|m| m.is_dir()).unwrap_or(false)
-}
-
-fn file_exists(p: &Path) -> bool {
-    fs::metadata(p).map(|m| m.is_file()).unwrap_or(false)
-}
-
 fn remove_file(p: &Path) -> StorageResult<()> {
     fs::remove_file(p)
         .or_else(|e|
@@ -142,4 +200,8 @@ fn remove_file(p: &Path) -> StorageResult<()> {
                 Err(e)
             }
         ).map_err(From::from)
+}
+
+fn dir_exists(p: &Path) -> bool {
+    fs::metadata(p).map(|m| m.is_dir()).unwrap_or(false)
 }

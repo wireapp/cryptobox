@@ -32,7 +32,8 @@ will place the package into `target/release/`. These debian packages are usually
 
 ## Other Languages & Cross-Compiling
 
-  * Java: A Java API through JNI with support for cross-compilation to Android is provided by [cryptobox-jni](https://github.com/romanb/cryptobox-jni).
+  * Java / Android: A Java API through JNI with support for cross-compilation to Android is provided by [cryptobox-jni](https://github.com/romanb/cryptobox-jni).
+  * Objective-C / iOS: Cross-compiled binaries for iOS as well as an Objective-C API is provided by [cryptobox-ios](https://github.com/romanb/cryptobox-ios).
   * Haskell: Haskell FFI bindings are available through [cryptobox-haskell](https://github.com/twittner/cryptobox-haskell).
 
 ## API Overview
@@ -115,7 +116,3 @@ to provide thread-safety as necessary for the desired usage pattern.
 
 > Note: When sessions are used concurrently, it is important to make sure not to have
 > two or more sessions with the same session ID in use at the same time.
-
-## Error Handling
-
-TODO
