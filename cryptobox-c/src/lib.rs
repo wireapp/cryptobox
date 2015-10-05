@@ -16,8 +16,11 @@ use proteus::keys::{self, PreKeyId};
 use proteus::session::DecryptError;
 use std::borrow::Cow;
 use std::ffi::{CStr, NulError};
+use std::fmt;
 use std::path::Path;
 use std::{slice, str, u16};
+
+mod log;
 
 /// Variant of std::try! that returns the unwrapped error.
 macro_rules! try_unwrap {
@@ -283,8 +286,9 @@ pub enum CBoxResult {
     PreKeyNotFound        = 14
 }
 
-impl<S: Store> From<CBoxError<S>> for CBoxResult {
+impl<S: Store + fmt::Debug> From<CBoxError<S>> for CBoxResult {
     fn from(e: CBoxError<S>) -> CBoxResult {
+        log::error(&e);
         match e {
             CBoxError::DecryptError(DecryptError::RemoteIdentityChanged) => CBoxResult::RemoteIdentityChanged,
             CBoxError::DecryptError(DecryptError::InvalidSignature)      => CBoxResult::InvalidSignature,
@@ -303,19 +307,22 @@ impl<S: Store> From<CBoxError<S>> for CBoxResult {
 }
 
 impl From<str::Utf8Error> for CBoxResult {
-    fn from(_: str::Utf8Error) -> CBoxResult {
+    fn from(e: str::Utf8Error) -> CBoxResult {
+        log::error(&e);
         CBoxResult::Utf8Error
     }
 }
 
 impl From<DecodeError> for CBoxResult {
-    fn from(_: DecodeError) -> CBoxResult {
+    fn from(e: DecodeError) -> CBoxResult {
+        log::error(&e);
         CBoxResult::DecodeError
     }
 }
 
 impl From<EncodeError> for CBoxResult {
-    fn from(_: EncodeError) -> CBoxResult {
+    fn from(e: EncodeError) -> CBoxResult {
+        log::error(&e);
         CBoxResult::EncodeError
     }
 }
