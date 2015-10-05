@@ -96,8 +96,7 @@ fn cbox_session_delete(cbox: &CBox<FileStore>, c_sid: *const c_char) -> CBoxResu
 }
 
 #[no_mangle]
-pub unsafe
-fn cbox_random_bytes(_: &CBox<FileStore>, n: size_t) -> *mut CBoxVec {
+pub fn cbox_random_bytes(_: &CBox<FileStore>, n: size_t) -> *mut CBoxVec {
     CBoxVec::from_vec(keys::rand_bytes(n as usize))
 }
 // Prekeys //////////////////////////////////////////////////////////////////
