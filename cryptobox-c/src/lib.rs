@@ -8,6 +8,7 @@ extern crate libc;
 extern crate proteus;
 
 use cryptobox::{CBox, CBoxError, CBoxSession, Identity, IdentityMode};
+use cryptobox::store::Store;
 use cryptobox::store::file::FileStore;
 use libc::{c_char, c_ushort, size_t, uint8_t};
 use proteus::{DecodeError, EncodeError};
@@ -283,8 +284,8 @@ pub enum CBoxResult {
     PreKeyNotFound        = 14
 }
 
-impl<E> From<CBoxError<E>> for CBoxResult {
-    fn from(e: CBoxError<E>) -> CBoxResult {
+impl<S: Store> From<CBoxError<S>> for CBoxResult {
+    fn from(e: CBoxError<S>) -> CBoxResult {
         match e {
             CBoxError::DecryptError(DecryptError::RemoteIdentityChanged) => CBoxResult::RemoteIdentityChanged,
             CBoxError::DecryptError(DecryptError::InvalidSignature)      => CBoxResult::InvalidSignature,
