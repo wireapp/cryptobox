@@ -1,5 +1,4 @@
 [package]
-
 name         = "cryptobox"
 version      = "0.4.0"
 authors      = ["Roman S. Borschel <roman@pkaboo.org>", "Toralf Wittner <tw@dtex.org>"]
@@ -18,5 +17,5 @@ cbor-codec   = ">= 0.1.0"
 libc         = ">  0.1.0"
 
 [dependencies.proteus]
-git    = "https://github.com/twittner/proteus"
-branch = "develop"
+git = "https://github.com/twittner/proteus"
+tag = "v0.3.0"
