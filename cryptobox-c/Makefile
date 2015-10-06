@@ -33,7 +33,7 @@ test-compile:
 	mkdir -p test/target
 	cp target/debug/libcryptobox.$(LIB_TYPE) test/target/libcryptobox.$(LIB_TYPE)
 	rm -f test/target/main
-	$(CC) -std=c99 -Wall -Wextra -Werror -g test/main.c -o test/target/main -I. -Ltest/target -lcryptobox
+	$(CC) -std=c99 -Wall -Wextra -Werror -g test/main.c -o test/target/main -Isrc -Ltest/target -lcryptobox
 
 bench: bench-compile
 	$(LIB_PATH)=test/target test/target/bench
@@ -42,10 +42,10 @@ bench-compile: compile-release
 	mkdir -p test/target
 	cp target/release/libcryptobox.$(LIB_TYPE) test/target/libcryptobox.$(LIB_TYPE)
 	rm -f test/target/bench
-	$(CC) -std=c99 -Wall -Wextra -Werror -g test/bench.c -o test/target/bench -I. -Ltest/target -lcryptobox
+	$(CC) -std=c99 -Wall -Wextra -Werror -g test/bench.c -o test/target/bench -Isrc -Ltest/target -lcryptobox
 
 install: compile-release
-	cp cbox.h /usr/local/include
+	cp src/cbox.h /usr/local/include
 	cp target/release/libcryptobox.$(LIB_TYPE) /usr/local/lib
 	ln -s /usr/local/lib/libcryptobox.$(LIB_TYPE) /usr/local/lib/libcryptobox.$(LIB_TYPE)
 
@@ -56,7 +56,7 @@ uninstall:
 dist: compile-release
 	mkdir -p deb/usr/include
 	mkdir -p deb/usr/lib
-	cp cbox.h deb/usr/include
+	cp src/cbox.h deb/usr/include
 	cp target/release/libcryptobox.$(LIB_TYPE) deb/usr/lib
 ifeq ($(OS), linux)
 	makedeb --name=cryptobox       \

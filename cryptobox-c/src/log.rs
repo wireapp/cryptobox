@@ -29,7 +29,7 @@ mod target {
         let msg = CString::new(msg.as_bytes()).unwrap_or(CString::new("<malformed log message>").unwrap());
         unsafe {
             __android_log_write(lvl, tag.as_ptr(), msg.as_ptr())
-        };
+        }
     }
 
     #[link(name = "log")]

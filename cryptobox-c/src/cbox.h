@@ -7,8 +7,8 @@
 extern "C" {
 #endif
 
-/////////////
 // CBoxVec //////////////////////////////////////////////////////////////////
+
 // A heap-allocated vector of bytes.
 typedef struct CBoxVec CBoxVec;
 
@@ -16,13 +16,13 @@ typedef struct CBoxVec CBoxVec;
 uint8_t * cbox_vec_data(CBoxVec const * v);
 
 // Get the length of a byte vector.
-size_t cbox_vec_len(CBoxVec  const * v);
+size_t cbox_vec_len(CBoxVec const * v);
 
 // Deallocate a byte vector.
 void cbox_vec_free(CBoxVec * v);
 
-////////////////
 // CBoxResult ///////////////////////////////////////////////////////////////
+
 // The result of an operation that might fail.
 typedef enum {
     CBOX_SUCCESS                 = 0,
@@ -80,8 +80,8 @@ typedef enum {
     CBOX_PREKEY_NOT_FOUND        = 14
 } CBoxResult;
 
-//////////////////////
 // CBoxIdentityMode /////////////////////////////////////////////////////////
+
 // The local storage mode for an external identity in `cbox_file_open_with`.
 typedef enum {
     // The full identity is stored locally inside the CBox.
@@ -91,8 +91,8 @@ typedef enum {
     CBOX_IDENTITY_PUBLIC   = 1
 } CBoxIdentityMode;
 
-//////////
 // CBox /////////////////////////////////////////////////////////////////////
+
 // A container of sessions and prekeys of a single peer with a long-lived
 // identity which is either internally or externally managed.
 typedef struct CBox CBox;
@@ -145,7 +145,6 @@ CBoxResult cbox_identity_copy(CBox const * b, CBoxVec ** ident);
 // can no longer be used with the exception of being closed via `cbox_session_close`.
 void cbox_close(CBox * b);
 
-/////////////
 // Prekeys //////////////////////////////////////////////////////////////////
 
 // The ID of the "last resort" prekey, which is never removed.
@@ -159,10 +158,10 @@ extern const uint16_t CBOX_LAST_PREKEY_ID;
 // `b` is the CBox in which to create the new prekey.
 // `prekey` is the pointer to point at the public key material of the new
 //          prekey for usage by a peer.
-CBoxResult cbox_new_prekey(CBox * b, uint16_t id, CBoxVec ** prekey);
+CBoxResult cbox_new_prekey(CBox const * b, uint16_t id, CBoxVec ** prekey);
 
-/////////////////
 // CBoxSession //////////////////////////////////////////////////////////////
+
 // A cryptographic session with a peer.
 typedef struct CBoxSession CBoxSession;
 
@@ -177,7 +176,7 @@ typedef struct CBoxSession CBoxSession;
 // `peer_prekey` is the public prekey of the peer.
 // `peer_prekey_len` is the length (in bytes) of the `peer_prekey`.
 // `s` is the pointer to point at the successfully initialised session.
-CBoxResult cbox_session_init_from_prekey(CBox * b,
+CBoxResult cbox_session_init_from_prekey(CBox const * b,
                                          char const * sid,
                                          uint8_t const * peer_prekey,
                                          size_t peer_prekey_len,
@@ -195,7 +194,7 @@ CBoxResult cbox_session_init_from_prekey(CBox * b,
 // `cipher_len` is the length (in bytes) of `cipher`.
 // `s` is the pointer to point at the successfully initialised session.
 // `plain` is the pointer to point at the successfully decrypted message.
-CBoxResult cbox_session_init_from_message(CBox * b,
+CBoxResult cbox_session_init_from_message(CBox const * b,
                                           char const * sid,
                                           uint8_t const * cipher,
                                           size_t cipher_len,
@@ -212,7 +211,7 @@ CBoxResult cbox_session_init_from_message(CBox * b,
 //     session or the box is closed.
 // `sid` is the session ID to look for.
 // `s` is the pointer to point at the session, if it is found.
-CBoxResult cbox_session_get(CBox * b, char const * sid, CBoxSession ** s);
+CBoxResult cbox_session_load(CBox const * b, char const * sid, CBoxSession ** s);
 
 // Save a session.
 //
@@ -226,14 +225,7 @@ CBoxResult cbox_session_get(CBox * b, char const * sid, CBoxSession ** s);
 // a peer, as well as after decrypting one or more received messages.
 // ---
 // `s` is the session to save.
-CBoxResult cbox_session_save(CBoxSession * s);
-
-// Get the ID of a session.
-//
-// Returns the ID of the given session, as it was given during initialisation.
-// ---
-// `s` is the session for which to retreive the ID.
-char const * cbox_session_id(CBoxSession const * s);
+CBoxResult cbox_session_save(CBox const * b, CBoxSession * s);
 
 // Close a session, freeing the memory associated with it.
 //
@@ -243,7 +235,7 @@ void cbox_session_close(CBoxSession * s);
 // Delete an existing session.
 //
 // If the session does not exist, this function does nothing.
-CBoxResult cbox_session_delete(CBox * b, char const * sid);
+CBoxResult cbox_session_delete(CBox const * b, char const * sid);
 
 // Encrypt a plaintext message.
 // ---
@@ -284,7 +276,6 @@ void cbox_fingerprint_local(CBox const * b, CBoxVec ** fp);
 // `fp` is the pointer to point at the fingerprint.
 void cbox_fingerprint_remote(CBoxSession const * s, CBoxVec ** fp);
 
-///////////////
 // Utilities ////////////////////////////////////////////////////////////////
 
 // Generate `len` cryptographically strong random bytes.
@@ -296,10 +287,8 @@ void cbox_fingerprint_remote(CBoxSession const * s, CBoxVec ** fp);
 // `len` is the number of random bytes to generate.
 CBoxVec * cbox_random_bytes(CBox const * b, size_t len);
 
-
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif // __CRYPTOBOX_H__
