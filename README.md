@@ -3,3 +3,8 @@
 `Cryptobox` provides a high-level API with persistent storage for the
 [proteus](https://github.com/twittner/proteus) implementation of the
 [axolotl](https://github.com/trevp/axolotl/wiki) protocol.
+
+## Modules
+
+  * [cryptobox](cryptobox): Rust API
+  * [cryptobox-c](cryptobox-c/README.md): C API
