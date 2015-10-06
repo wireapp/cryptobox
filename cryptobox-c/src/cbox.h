@@ -145,7 +145,6 @@ CBoxResult cbox_identity_copy(CBox const * b, CBoxVec ** ident);
 // can no longer be used with the exception of being closed via `cbox_session_close`.
 void cbox_close(CBox * b);
 
-/////////////
 // Prekeys //////////////////////////////////////////////////////////////////
 
 // The ID of the "last resort" prekey, which is never removed.
@@ -161,8 +160,8 @@ extern const uint16_t CBOX_LAST_PREKEY_ID;
 //          prekey for usage by a peer.
 CBoxResult cbox_new_prekey(CBox const * b, uint16_t id, CBoxVec ** prekey);
 
-/////////////////
 // CBoxSession //////////////////////////////////////////////////////////////
+
 // A cryptographic session with a peer.
 typedef struct CBoxSession CBoxSession;
 
@@ -273,7 +272,7 @@ CBoxResult cbox_decrypt(CBoxSession * s,
 // ---
 // `b` is the box from which to obtain the fingerprint.
 // `fp` is the pointer to point at the fingerprint.
-void cbox_fingerprint_local(CBoxSession const * b, CBoxVec ** fp);
+void cbox_fingerprint_local(CBox const * b, CBoxVec ** fp);
 
 // Get the public key fingerprint of the remote identity associated with
 // the given session.

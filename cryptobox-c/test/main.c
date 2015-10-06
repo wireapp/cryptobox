@@ -52,13 +52,13 @@ void test_basics(CBox * alice_box, CBox * bob_box) {
     CBoxVec * local = NULL;
     CBoxVec * remote = NULL;
 
-    cbox_fingerprint_local(alice, &local);
+    cbox_fingerprint_local(alice_box, &local);
     cbox_fingerprint_remote(bob, &remote);
     assert(strncmp((char const *) cbox_vec_data(local), (char const *) cbox_vec_data(remote), cbox_vec_len(remote)) == 0);
     cbox_vec_free(remote);
     cbox_vec_free(local);
 
-    cbox_fingerprint_local(bob, &local);
+    cbox_fingerprint_local(bob_box, &local);
     cbox_fingerprint_remote(alice, &remote);
     assert(strncmp((char const *) cbox_vec_data(local), (char const *) cbox_vec_data(remote), cbox_vec_len(remote)) == 0);
     cbox_vec_free(remote);

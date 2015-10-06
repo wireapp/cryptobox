@@ -31,7 +31,7 @@ void bench_session_save(CBox * alice_box, CBox * bob_box) {
     CBoxSession * alice = NULL;
     rc = cbox_session_init_from_prekey(alice_box, "alice", cbox_vec_data(bob_prekey), cbox_vec_len(bob_prekey), &alice);
     assert(rc == CBOX_SUCCESS);
-    rc = cbox_session_save(alice);
+    rc = cbox_session_save(alice_box, alice);
     assert(rc == CBOX_SUCCESS);
     uint8_t const hello_bob[] = "Hello Bob!";
     CBoxVec * cipher = NULL;
@@ -46,7 +46,7 @@ void bench_session_save(CBox * alice_box, CBox * bob_box) {
 
     double start = get_time();
     for (int i = 0; i < 1000; ++i) {
-        cbox_session_save(bob);
+        cbox_session_save(bob_box, bob);
     }
     double end = get_time();
 

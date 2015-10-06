@@ -203,8 +203,8 @@ pub extern fn cbox_decrypt
 
 #[no_mangle]
 pub extern
-fn cbox_fingerprint_local(session: &CBoxSession<FileStore>, out: *mut *mut CBoxVec) {
-    let fp = session.fingerprint_local().into_bytes();
+fn cbox_fingerprint_local(b: &CBox<FileStore>, out: *mut *mut CBoxVec) {
+    let fp = b.fingerprint().into_bytes();
     assign(out, CBoxVec::from_vec(fp))
 }
 

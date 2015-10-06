@@ -19,5 +19,4 @@ git    = "https://github.com/twittner/proteus"
 branch = "develop"
 
 [dependencies.cryptobox]
-git    = "https://github.com/romanb/cryptobox"
-branch = "develop"
+path   = "../cryptobox"
