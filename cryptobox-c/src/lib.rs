@@ -166,11 +166,6 @@ pub extern fn cbox_session_load<'r>
 }
 
 #[no_mangle]
-pub extern fn cbox_session_id(s: &CBoxSession<FileStore>) -> *const c_char {
-    s.identifier().as_ptr() as *const c_char
-}
-
-#[no_mangle]
 pub unsafe extern fn cbox_session_close(s: *mut CBoxSession<FileStore>) {
     Box::from_raw(s);
 }

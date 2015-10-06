@@ -227,13 +227,6 @@ CBoxResult cbox_session_load(CBox const * b, char const * sid, CBoxSession ** s)
 // `s` is the session to save.
 CBoxResult cbox_session_save(CBox const * b, CBoxSession * s);
 
-// Get the ID of a session.
-//
-// Returns the ID of the given session, as it was given during initialisation.
-// ---
-// `s` is the session for which to retreive the ID.
-char const * cbox_session_id(CBoxSession const * s);
-
 // Close a session, freeing the memory associated with it.
 //
 // After a session has been closed, it must no longer be used.
