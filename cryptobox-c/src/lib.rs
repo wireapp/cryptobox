@@ -262,7 +262,7 @@ pub enum CBoxResult {
 
 impl<S: Store + fmt::Debug> From<CBoxError<S>> for CBoxResult {
     fn from(e: CBoxError<S>) -> CBoxResult {
-        log::error(&e);
+        let _ = log::error(&e);
         match e {
             CBoxError::DecryptError(DecryptError::RemoteIdentityChanged) => CBoxResult::RemoteIdentityChanged,
             CBoxError::DecryptError(DecryptError::InvalidSignature)      => CBoxResult::InvalidSignature,
@@ -282,21 +282,21 @@ impl<S: Store + fmt::Debug> From<CBoxError<S>> for CBoxResult {
 
 impl From<str::Utf8Error> for CBoxResult {
     fn from(e: str::Utf8Error) -> CBoxResult {
-        log::error(&e);
+        let _ = log::error(&e);
         CBoxResult::Utf8Error
     }
 }
 
 impl From<DecodeError> for CBoxResult {
     fn from(e: DecodeError) -> CBoxResult {
-        log::error(&e);
+        let _ = log::error(&e);
         CBoxResult::DecodeError
     }
 }
 
 impl From<EncodeError> for CBoxResult {
     fn from(e: EncodeError) -> CBoxResult {
-        log::error(&e);
+        let _ = log::error(&e);
         CBoxResult::EncodeError
     }
 }
