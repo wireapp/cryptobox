@@ -13,4 +13,4 @@ cbor-codec = ">= 0.4.1"
 
 [dependencies.proteus]
 git    = "https://github.com/twittner/proteus"
-branch = "develop"
+tag    = "v0.4.0"
