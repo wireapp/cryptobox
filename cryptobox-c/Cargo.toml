@@ -12,7 +12,7 @@ name         = "cryptobox"
 crate-type   = ["dylib"]
 
 [dependencies]
-libc = "> 0.1.12"
+libc = ">= 0.1.12"
 
 [dependencies.proteus]
 git    = "https://github.com/twittner/proteus"
