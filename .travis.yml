@@ -10,4 +10,4 @@ install:
     - tar -xzf libsodium-1.0.3.tar.gz
     - cd libsodium-1.0.3 && ./configure --prefix=/usr && make && sudo make install && cd ..
 
-script: make test
+script: cd cryptobox-c && make test

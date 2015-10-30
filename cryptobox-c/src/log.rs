@@ -4,8 +4,9 @@
 // can obtain one at http://mozilla.org/MPL/2.0/.
 
 use std::error::Error;
+use std::io::Result;
 
-pub fn error<E: Error>(e: &E) {
+pub fn error<E: Error>(e: &E) -> Result<()> {
     target::error(e)
 }
 
@@ -13,23 +14,25 @@ pub fn error<E: Error>(e: &E) {
 
 #[cfg(target_os = "android")]
 mod target {
-    use libc::*;
+    use libc::{c_char, c_int};
     use std::error::Error;
-    use std::ffi::*;
+    use std::ffi::CStr;
+    use std::io::Result;
 
-    const TAG: &'static [u8] = b"CryptoBox";
+    const TAG: &'static str = "CryptoBox\0";
     const LEVEL_ERROR: c_int = 6;
 
-    pub fn error<E: Error>(e: &E) {
-        log(&format!("{}", e), LEVEL_ERROR)
+    pub fn error<E: Error>(e: &E) -> Result<()> {
+        log(&format!("{}\0", e), LEVEL_ERROR)
     }
 
-    fn log(msg: &str, lvl: c_int) {
-        let tag = CString::new(TAG).unwrap();
-        let msg = CString::new(msg.as_bytes()).unwrap_or(CString::new("<malformed log message>").unwrap());
+    fn log(msg: &str, lvl: c_int) -> Result<()> {
         unsafe {
-            __android_log_write(lvl, tag.as_ptr(), msg.as_ptr())
-        };
+            let tag = CStr::from_ptr(TAG.as_ptr() as *const c_char);
+            let msg = CStr::from_ptr(msg.as_ptr() as *const c_char);
+            __android_log_write(lvl, tag.as_ptr(), msg.as_ptr());
+        }
+        Ok(())
     }
 
     #[link(name = "log")]
@@ -43,9 +46,9 @@ mod target {
 #[cfg(not(target_os = "android"))]
 mod target {
     use std::error::Error;
-    use std::io::{Write, stderr};
+    use std::io::{Write, stderr, Result};
 
-    pub fn error<E: Error>(e: &E) {
-        writeln!(&mut stderr(), "ERROR: {}", e).unwrap();
+    pub fn error<E: Error>(e: &E) -> Result<()> {
+        writeln!(&mut stderr(), "ERROR: {}", e)
     }
 }

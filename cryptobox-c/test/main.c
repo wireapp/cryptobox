@@ -31,7 +31,7 @@ void test_basics(CBox * alice_box, CBox * bob_box) {
     CBoxSession * alice = NULL;
     rc = cbox_session_init_from_prekey(alice_box, "alice", cbox_vec_data(bob_prekey), cbox_vec_len(bob_prekey), &alice);
     assert(rc == CBOX_SUCCESS);
-    rc = cbox_session_save(alice);
+    rc = cbox_session_save(alice_box, alice);
     assert(rc == CBOX_SUCCESS);
     uint8_t const hello_bob[] = "Hello Bob!";
     CBoxVec * cipher = NULL;
@@ -44,7 +44,7 @@ void test_basics(CBox * alice_box, CBox * bob_box) {
     CBoxVec * plain = NULL;
     rc = cbox_session_init_from_message(bob_box, "bob", cbox_vec_data(cipher), cbox_vec_len(cipher), &bob, &plain);
     assert(rc == CBOX_SUCCESS);
-    cbox_session_save(bob);
+    cbox_session_save(bob_box, bob);
 
     assert(strncmp((char const *) hello_bob, (char const *) cbox_vec_data(plain), cbox_vec_len(plain)) == 0);
 
@@ -67,14 +67,14 @@ void test_basics(CBox * alice_box, CBox * bob_box) {
     // Load the sessions again
     cbox_session_close(alice);
     cbox_session_close(bob);
-    rc = cbox_session_get(alice_box, "alice", &alice);
+    rc = cbox_session_load(alice_box, "alice", &alice);
     assert(rc == CBOX_SUCCESS);
-    rc = cbox_session_get(bob_box, "bob", &bob);
+    rc = cbox_session_load(bob_box, "bob", &bob);
     assert(rc == CBOX_SUCCESS);
 
     // unknown session
     CBoxSession * unknown = NULL;
-    rc = cbox_session_get(alice_box, "unknown", &unknown);
+    rc = cbox_session_load(alice_box, "unknown", &unknown);
     assert(rc == CBOX_SESSION_NOT_FOUND);
 
     // Cleanup
@@ -119,7 +119,7 @@ void test_prekey_removal(CBox * alice_box, CBox * bob_box) {
     rc = cbox_session_init_from_message(bob_box, "bob", cbox_vec_data(cipher), cbox_vec_len(cipher), &bob, &plain);
     assert(rc == CBOX_SUCCESS);
 
-    cbox_session_save(bob);
+    cbox_session_save(bob_box, bob);
 
     // Now the prekey should be gone
     cbox_session_close(bob);
@@ -138,6 +138,7 @@ void test_prekey_removal(CBox * alice_box, CBox * bob_box) {
 void test_random_bytes(CBox const * b) {
     printf("test_random_bytes ... ");
     CBoxVec * random = cbox_random_bytes(b, 16);
+    assert(16 == cbox_vec_len(random));
     cbox_vec_free(random);
     printf("OK\n");
 }
@@ -164,7 +165,7 @@ void test_last_prekey(CBox * alice_box, CBox * bob_box) {
     rc = cbox_session_init_from_message(bob_box, "bob", cbox_vec_data(cipher), cbox_vec_len(cipher), &bob, &plain);
     assert(rc == CBOX_SUCCESS);
 
-    cbox_session_save(bob);
+    cbox_session_save(bob_box, bob);
     cbox_session_close(bob);
     cbox_vec_free(plain);
 
@@ -222,14 +223,14 @@ void test_delete_session(CBox * alice_box, CBox * bob_box) {
     cbox_vec_free(bob_prekey);
     assert(rc == CBOX_SUCCESS);
 
-    rc = cbox_session_save(alice);
+    rc = cbox_session_save(alice_box, alice);
     assert(rc == CBOX_SUCCESS);
     cbox_session_close(alice);
 
     rc = cbox_session_delete(alice_box, "alice");
     assert(rc == CBOX_SUCCESS);
 
-    rc = cbox_session_get(alice_box, "alice", &alice);
+    rc = cbox_session_load(alice_box, "alice", &alice);
     assert(rc == CBOX_SESSION_NOT_FOUND);
 
     // no-op, session does not exist
