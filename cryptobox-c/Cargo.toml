@@ -16,7 +16,7 @@ libc = ">= 0.1.12"
 
 [dependencies.proteus]
 git    = "https://github.com/twittner/proteus"
-tag    = "v0.4.0"
+branch = "develop"
 
 [dependencies.cryptobox]
 path   = "../cryptobox"
