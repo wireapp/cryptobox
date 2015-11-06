@@ -1,4 +1,4 @@
-# Cryptobox - C API [![Build Status](https://travis-ci.org/romanb/cryptobox.svg?branch=develop)](https://travis-ci.org/romanb/cryptobox)
+# Cryptobox - C API [![Build Status](https://travis-ci.org/shared-secret/cryptobox.svg?branch=develop)](https://travis-ci.org/shared-secret/cryptobox)
 
 `cryptobox-c` provides a high-level C API for the `cryptobox` library.
 
@@ -30,9 +30,9 @@ will place the package into `target/release/`. These debian packages are usually
 
 ## Language Bindings
 
-  * Java / Android: A Java API through JNI with support for cross-compilation to Android is provided by [cryptobox-jni](https://github.com/romanb/cryptobox-jni).
-  * Objective-C / iOS: Cross-compiled binaries for iOS as well as an Objective-C API is provided by [cryptobox-ios](https://github.com/romanb/cryptobox-ios).
-  * Haskell: Haskell FFI bindings are available through [cryptobox-haskell](https://github.com/twittner/cryptobox-haskell).
+  * Java / Android: A Java API through JNI with support for cross-compilation to Android is provided by [cryptobox-jni](https://github.com/shared-secret/cryptobox-jni).
+  * Objective-C / iOS: Cross-compiled binaries for iOS as well as an Objective-C API is provided by [cryptobox-ios](https://github.com/shared-secret/cryptobox-ios).
+  * Haskell: Haskell FFI bindings are available through [cryptobox-haskell](https://github.com/shared-secret/cryptobox-haskell).
 
 ## API Overview
 
