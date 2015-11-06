@@ -1,10 +1,10 @@
-# Cryptobox [![Build Status](https://travis-ci.org/shared-secret/cryptobox.svg?branch=develop)](https://travis-ci.org/shared-secret/cryptobox)
+# Cryptobox
 
-`Cryptobox` provides a high-level API with persistent storage for the
-[proteus](https://github.com/shared-secret/proteus) implementation of the
-[axolotl](https://github.com/trevp/axolotl/wiki) protocol.
+[![Build Status](https://travis-ci.org/shared-secret/cryptobox.svg?branch=develop)][1]
 
-## Modules
+Cryptobox provides a high-level API with persistent storage for the
+[proteus][2] implementation of the [axolotl][3] protocol.
 
-  * [cryptobox](cryptobox): Rust API
-  * [cryptobox-c](cryptobox-c/README.md): C API
+[1]: https://travis-ci.org/shared-secret/cryptobox
+[2]: https://github.com/shared-secret/proteus
+[3]: https://github.com/trevp/axolotl/wiki
