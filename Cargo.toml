@@ -1,6 +1,6 @@
 [package]
 name         = "cryptobox"
-version      = "0.6.0"
+version      = "0.6.1"
 authors      = ["Roman S. Borschel <roman@pkaboo.org>", "Toralf Wittner <tw@dtex.org>"]
 description  = "High-level API for proteus with persistent storage."
 homepage     = "https://github.com/shared-secret/cryptobox"
@@ -12,5 +12,5 @@ byteorder  = ">  0.3.0"
 cbor-codec = ">= 0.4.1"
 
 [dependencies.proteus]
-git = "https://github.com/shared-secret/proteus"
-tag = "v0.4.1"
+git    = "https://github.com/shared-secret/proteus"
+branch = "develop"
