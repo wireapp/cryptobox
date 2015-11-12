@@ -1,13 +1,7 @@
 language: rust
 rust: nightly
 
-before_install:
-    - sudo apt-get update -qq
-
-install:
-    - sudo apt-get install -y valgrind
-    - wget "https://github.com/jedisct1/libsodium/releases/download/1.0.3/libsodium-1.0.3.tar.gz"
-    - tar -xzf libsodium-1.0.3.tar.gz
-    - cd libsodium-1.0.3 && ./configure --prefix=/usr && make && sudo make install && cd ..
-
-script: cd cryptobox-c && make test
+before_script:
+    - wget "https://github.com/jedisct1/libsodium/releases/download/1.0.6/libsodium-1.0.6.tar.gz"
+    - tar -xzvf libsodium-1.0.6.tar.gz
+    - cd libsodium-1.0.6 && ./configure --prefix=/usr && make && sudo make install
