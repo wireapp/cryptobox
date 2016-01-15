@@ -22,13 +22,15 @@ mod identity;
 
 pub use identity::Identity;
 
-use proteus::keys::{self, IdentityKeyPair, PreKey, PreKeyBundle, PreKeyId};
+use cbor::{Config, Encoder, Decoder};
+use proteus::keys::{self, IdentityKeyPair, PreKey, PreKeyBundle, PreKeyId, Signature};
 use proteus::message::Envelope;
 use proteus::session::{DecryptError, PreKeyStore, Session};
 use proteus::{DecodeError, EncodeError};
 use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
+use std::io::Cursor;
 use std::mem;
 use std::path::Path;
 use store::Store;
@@ -141,6 +143,19 @@ impl<S: Store> CBox<S> {
         try!(self.store.add_prekey(&pk).map_err(CBoxError::StorageError));
         Ok(PreKeyBundle::new(self.ident.public_key, &pk))
     }
+
+    pub fn sign(&self, d: &[u8]) -> Result<Vec<u8>, CBoxError<S>> {
+        let     s = self.ident.secret_key.sign(d);
+        let mut e = Encoder::new(Cursor::new(Vec::new()));
+        try!(s.encode(&mut e));
+        Ok(e.into_writer().into_inner())
+    }
+
+    pub fn verify(&self, s: &[u8], d: &[u8]) -> Result<bool, CBoxError<S>> {
+        let dec = &mut Decoder::new(Config::default(), Cursor::new(s));
+        let sig = try!(Signature::decode(dec));
+        Ok(self.ident.public_key.public_key.verify(&sig, d))
+    }
 }
 
 impl<S> CBox<S> {
@@ -178,6 +193,12 @@ impl<'r, S: Store> CBoxSession<'r, S> {
 
     pub fn removed_prekeys(&mut self) -> Vec<PreKeyId> {
         mem::replace(&mut self.store.removed, Vec::new())
+    }
+
+    pub fn verify_remote(&self, s: &[u8], d: &[u8]) -> Result<bool, CBoxError<S>> {
+        let dec = &mut Decoder::new(Config::default(), Cursor::new(s));
+        let sig = try!(Signature::decode(dec));
+        Ok(self.session.remote_identity().public_key.verify(&sig, d))
     }
 }
 
