@@ -13,4 +13,4 @@ cbor-codec = ">= 0.4.1"
 
 [dependencies.proteus]
 git    = "https://github.com/wireapp/proteus"
-branch = "develop"
+branch = "master"
