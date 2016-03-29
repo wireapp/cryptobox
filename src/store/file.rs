@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use byteorder::{self, BigEndian, ReadBytesExt, WriteBytesExt};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use identity::Identity;
 use proteus::{DecodeError, EncodeError};
 use proteus::keys::{PreKey, PreKeyId, IdentityKeyPair};
@@ -226,17 +226,15 @@ pub type FileStoreResult<A> = Result<A, FileStoreError>;
 pub enum FileStoreError {
     Io(io::Error),
     Decode(DecodeError),
-    Encode(EncodeError),
-    ByteOrder(byteorder::Error)
+    Encode(EncodeError)
 }
 
 impl fmt::Display for FileStoreError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            FileStoreError::Io(ref e)        => write!(f, "FileStoreError: I/O error: {}", e),
-            FileStoreError::Decode(ref e)    => write!(f, "FileStoreError: Decode error: {}", e),
-            FileStoreError::Encode(ref e)    => write!(f, "FileStoreError: Encode error: {}", e),
-            FileStoreError::ByteOrder(ref e) => write!(f, "FileStoreError: ByteOrder error: {}", e)
+            FileStoreError::Io(ref e)     => write!(f, "FileStoreError: I/O error: {}", e),
+            FileStoreError::Decode(ref e) => write!(f, "FileStoreError: Decode error: {}", e),
+            FileStoreError::Encode(ref e) => write!(f, "FileStoreError: Encode error: {}", e)
         }
     }
 }
@@ -248,10 +246,9 @@ impl Error for FileStoreError {
 
     fn cause(&self) -> Option<&Error> {
         match *self {
-            FileStoreError::Io(ref e)        => Some(e),
-            FileStoreError::Decode(ref e)    => Some(e),
-            FileStoreError::Encode(ref e)    => Some(e),
-            FileStoreError::ByteOrder(ref e) => Some(e)
+            FileStoreError::Io(ref e)     => Some(e),
+            FileStoreError::Decode(ref e) => Some(e),
+            FileStoreError::Encode(ref e) => Some(e)
         }
     }
 }
@@ -271,11 +268,5 @@ impl From<DecodeError> for FileStoreError {
 impl From<EncodeError> for FileStoreError {
     fn from(e: EncodeError) -> FileStoreError {
         FileStoreError::Encode(e)
-    }
-}
-
-impl From<byteorder::Error> for FileStoreError {
-    fn from(e: byteorder::Error) -> FileStoreError {
-        FileStoreError::ByteOrder(e)
     }
 }

@@ -8,8 +8,8 @@ repository   = "git@github.com:wireapp/cryptobox.git"
 license      = "GPL-3.0"
 
 [dependencies]
-byteorder  = ">  0.3.0"
-cbor-codec = ">= 0.4.1"
+byteorder  = ">= 0.5.1"
+cbor-codec = ">= 0.5.0"
 
 [dependencies.proteus]
 git    = "https://github.com/wireapp/proteus"
