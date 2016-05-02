@@ -139,7 +139,7 @@ impl<S: Store> CBox<S> {
     pub fn new_prekey(&self, id: PreKeyId) -> Result<PreKeyBundle, CBoxError<S>> {
         let pk = PreKey::new(id);
         try!(self.store.add_prekey(&pk).map_err(CBoxError::StorageError));
-        Ok(PreKeyBundle::new(self.ident.public_key, &pk))
+        Ok(PreKeyBundle::new(self.ident.public_key.clone(), &pk))
     }
 }
 
