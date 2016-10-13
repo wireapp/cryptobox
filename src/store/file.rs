@@ -18,7 +18,7 @@ use identity::Identity;
 use proteus::{DecodeError, EncodeError};
 use proteus::keys::{PreKey, PreKeyId, IdentityKeyPair};
 use proteus::session::Session;
-use std::borrow::Cow;
+use std::borrow::{Borrow, Cow};
 use std::error::Error;
 use std::fmt;
 use std::fs::{self, File};
@@ -112,7 +112,7 @@ impl FileStore {
 impl Store for FileStore {
     type Error = FileStoreError;
 
-    fn load_session<'r>(&self, li: &'r IdentityKeyPair, id: &str) -> FileStoreResult<Option<Session<'r>>> {
+    fn load_session<I: Borrow<IdentityKeyPair>>(&self, li: I, id: &str) -> FileStoreResult<Option<Session<I>>> {
         let path = self.session_dir.join(id);
         match try!(load_file(&path)) {
             Some(b) => Ok(Some(try!(Session::deserialise(li, &b)))),
@@ -120,7 +120,7 @@ impl Store for FileStore {
         }
     }
 
-    fn save_session(&self, id: &str, s: &Session) -> FileStoreResult<()> {
+    fn save_session<I: Borrow<IdentityKeyPair>>(&self, id: &str, s: &Session<I>) -> FileStoreResult<()> {
         let path = self.session_dir.join(id);
         write_file(&path, &try!(s.serialise()), false)
     }

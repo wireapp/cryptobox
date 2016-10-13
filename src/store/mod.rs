@@ -13,6 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::borrow::Borrow;
 use identity::Identity;
 use proteus::keys::{IdentityKeyPair, PreKey, PreKeyId};
 use proteus::session::Session;
@@ -22,8 +23,8 @@ pub mod file;
 pub trait Store {
     type Error: ::std::error::Error;
 
-    fn load_session<'r>(&self, li: &'r IdentityKeyPair, id: &str) -> Result<Option<Session<'r>>, Self::Error>;
-    fn save_session(&self, id: &str, s: &Session) -> Result<(), Self::Error>;
+    fn load_session<I: Borrow<IdentityKeyPair>>(&self, li: I, id: &str) -> Result<Option<Session<I>>, Self::Error>;
+    fn save_session<I: Borrow<IdentityKeyPair>>(&self, id: &str, s: &Session<I>) -> Result<(), Self::Error>;
     fn delete_session(&self, id: &str) -> Result<(), Self::Error>;
 
     fn load_identity<'s>(&self) -> Result<Option<Identity<'s>>, Self::Error>;
