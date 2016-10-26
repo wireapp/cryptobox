@@ -18,8 +18,9 @@ use identity::Identity;
 use proteus::{DecodeError, EncodeError};
 use proteus::keys::{PreKey, PreKeyId, IdentityKeyPair};
 use proteus::session::Session;
-use std::borrow::{Borrow, Cow};
+use std::borrow::Borrow;
 use std::error::Error;
+use std::ffi::OsStr;
 use std::fmt;
 use std::fs::{self, File};
 use std::io::{self, Read, Write, ErrorKind};
@@ -42,7 +43,8 @@ pub struct FileStore {
 }
 
 impl FileStore {
-    pub fn new(root: &Path) -> FileStoreResult<FileStore> {
+    pub fn new<P: AsRef<OsStr>>(root: P) -> FileStoreResult<FileStore> {
+        let root = Path::new(root.as_ref());
         let fs = FileStore {
             root_dir:     PathBuf::from(root),
             session_dir:  root.join("sessions"),
@@ -50,46 +52,31 @@ impl FileStore {
             identity_dir: root.join("identities")
         };
 
-        match try!(FileStore::read_version(&fs.root_dir)) {
-            Some(v) => { try!(FileStore::migrate(v)); return Ok(fs) },
-            None    => ()
+        if let Some(v) = FileStore::read_version(&fs.root_dir)? {
+            FileStore::migrate(v)?;
+            return Ok(fs)
         }
 
         if !dir_exists(&fs.session_dir) {
-            try!(fs::create_dir(&fs.session_dir));
+            fs::create_dir(&fs.session_dir)?;
         }
         if !dir_exists(&fs.prekey_dir) {
-            try!(fs::create_dir(&fs.prekey_dir));
+            fs::create_dir(&fs.prekey_dir)?;
         }
         if !dir_exists(&fs.identity_dir) {
-            try!(fs::create_dir(&fs.identity_dir));
-        } else {
-            // Legacy: Migrate old "local_identity"
-            let p = fs.identity_dir.join("local_identity");
-            // 1. load old identity
-            match try!(load_file(&p)) {
-                None    => (),
-                Some(b) => {
-                    let kp = try!(IdentityKeyPair::deserialise(&b));
-                    let i = Identity::Sec(Cow::Borrowed(&kp));
-                    // 2. write new local identity
-                    try!(fs.save_identity(&i));
-                    // 3. delete old identity
-                    try!(remove_file(&p));
-                }
-            };
+            fs::create_dir(&fs.identity_dir)?;
         }
 
-        try!(FileStore::write_version(&fs.root_dir, CURRENT_VERSION));
+        FileStore::write_version(&fs.root_dir, CURRENT_VERSION)?;
 
         Ok(fs)
     }
 
     fn read_version(root: &PathBuf) -> FileStoreResult<Option<Version>> {
         let p = root.join("version");
-        match try!(open_file(&p)) {
+        match open_file(&p)? {
             Some(mut f) => {
-                let v = try!(f.read_u16::<BigEndian>());
+                let v = f.read_u16::<BigEndian>()?;
                 Ok(Some(Version(v)))
             }
             None => Ok(None)
@@ -99,7 +86,7 @@ impl FileStore {
     fn write_version(root: &PathBuf, Version(v): Version) -> FileStoreResult<()> {
         let p = root.join("version");
         let mut b = [0;2];
-        try!(b.as_mut().write_u16::<BigEndian>(v));
+        b.as_mut().write_u16::<BigEndian>(v)?;
         write_file(&p, &b, true)
     }
 
@@ -114,15 +101,15 @@ impl Store for FileStore {
 
     fn load_session<I: Borrow<IdentityKeyPair>>(&self, li: I, id: &str) -> FileStoreResult<Option<Session<I>>> {
         let path = self.session_dir.join(id);
-        match try!(load_file(&path)) {
-            Some(b) => Ok(Some(try!(Session::deserialise(li, &b)))),
+        match load_file(&path)? {
+            Some(b) => Ok(Some(Session::deserialise(li, &b)?)),
             None    => Ok(None)
         }
     }
 
     fn save_session<I: Borrow<IdentityKeyPair>>(&self, id: &str, s: &Session<I>) -> FileStoreResult<()> {
         let path = self.session_dir.join(id);
-        write_file(&path, &try!(s.serialise()), false)
+        write_file(&path, &s.serialise()?, false)
     }
 
     fn delete_session(&self, id: &str) -> FileStoreResult<()> {
@@ -130,27 +117,27 @@ impl Store for FileStore {
         remove_file(&path)
     }
 
-    fn load_identity<'s>(&self) -> FileStoreResult<Option<Identity<'s>>> {
+    fn load_identity<'a>(&self) -> FileStoreResult<Option<Identity<'a>>> {
         let path = self.identity_dir.join("local");
-        match try!(load_file(&path)) {
+        match load_file(&path)? {
             Some(b) => Identity::deserialise(&b).map_err(From::from).map(Some),
             None    => Ok(None)
         }
     }
 
-    fn save_identity(&self, id: &Identity) -> FileStoreResult<()> {
+    fn save_identity(&self, id: Identity) -> FileStoreResult<()> {
         let path = self.identity_dir.join("local");
-        write_file(&path, &try!(id.serialise()), true)
+        write_file(&path, &id.serialise()?, true)
     }
 
     fn add_prekey(&self, key: &PreKey) -> FileStoreResult<()> {
         let path = self.prekey_dir.join(&key.key_id.value().to_string());
-        write_file(&path, &try!(key.serialise()), true)
+        write_file(&path, &key.serialise()?, true)
     }
 
     fn load_prekey(&self, id: PreKeyId) -> FileStoreResult<Option<PreKey>> {
         let path = self.prekey_dir.join(&id.value().to_string());
-        match try!(load_file(&path)) {
+        match load_file(&path)? {
             Some(b) => PreKey::deserialise(&b).map_err(From::from).map(Some),
             None    => Ok(None)
         }
@@ -174,7 +161,7 @@ fn open_file(p: &Path) -> FileStoreResult<Option<File>> {
 }
 
 fn load_file(p: &Path) -> FileStoreResult<Option<Vec<u8>>> {
-    let file = match try!(open_file(p)) {
+    let file = match open_file(p)? {
         Some(f) => f,
         None    => return Ok(None)
     };
@@ -182,13 +169,13 @@ fn load_file(p: &Path) -> FileStoreResult<Option<Vec<u8>>> {
     let mut buf = io::BufReader::new(file);
     let mut dat = Vec::new();
 
-    try!(buf.read_to_end(&mut dat));
+    buf.read_to_end(&mut dat)?;
     Ok(Some(dat))
 }
 
 fn write_file(p: &Path, bytes: &[u8], sync: bool) -> FileStoreResult<()> {
     fn write(path: &Path, bytes: &[u8], sync: bool) -> io::Result<()> {
-        let mut file = try!(File::create(&path));
+        let mut file = File::create(&path)?;
         let mut rs = file.write_all(bytes);
         if sync {
             rs = rs.and(file.sync_all());
@@ -199,7 +186,7 @@ fn write_file(p: &Path, bytes: &[u8], sync: bool) -> FileStoreResult<()> {
         })
     }
     let path = p.with_extension("tmp");
-    try!(write(&path, bytes, sync));
+    write(&path, bytes, sync)?;
     fs::rename(&path, p).map_err(From::from)
 }
 

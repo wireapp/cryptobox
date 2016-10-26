@@ -23,14 +23,21 @@ pub mod file;
 pub trait Store {
     type Error: ::std::error::Error;
 
-    fn load_session<I: Borrow<IdentityKeyPair>>(&self, li: I, id: &str) -> Result<Option<Session<I>>, Self::Error>;
-    fn save_session<I: Borrow<IdentityKeyPair>>(&self, id: &str, s: &Session<I>) -> Result<(), Self::Error>;
+    fn load_session<I>(&self, li: I, id: &str) -> Result<Option<Session<I>>, Self::Error>
+        where I: Borrow<IdentityKeyPair>;
+
+    fn save_session<I>(&self, id: &str, s: &Session<I>) -> Result<(), Self::Error>
+        where I: Borrow<IdentityKeyPair>;
+
     fn delete_session(&self, id: &str) -> Result<(), Self::Error>;
 
-    fn load_identity<'s>(&self) -> Result<Option<Identity<'s>>, Self::Error>;
-    fn save_identity(&self, id: &Identity) -> Result<(), Self::Error>;
+    fn load_identity<'a>(&self) -> Result<Option<Identity<'a>>, Self::Error>;
+
+    fn save_identity(&self, id: Identity) -> Result<(), Self::Error>;
 
     fn load_prekey(&self, id: PreKeyId) -> Result<Option<PreKey>, Self::Error>;
+
     fn add_prekey(&self, key: &PreKey) -> Result<(), Self::Error>;
+
     fn delete_prekey(&self, id: PreKeyId) -> Result<(), Self::Error>;
 }

@@ -34,7 +34,7 @@ pub enum Identity<'r> {
 impl<'r> Identity<'r> {
     pub fn serialise(&self) -> Result<Vec<u8>, EncodeError> {
         let mut e = Encoder::new(io::Cursor::new(Vec::new()));
-        try!(self.encode(&mut e));
+        self.encode(&mut e)?;
         Ok(e.into_writer().into_inner())
     }
 
@@ -45,48 +45,48 @@ impl<'r> Identity<'r> {
     fn encode<W: io::Write>(&self, e: &mut Encoder<W>) -> Result<(), EncodeError> {
         match *self {
             Identity::Sec(ref id) => {
-                try!(e.u8(1));
-                try!(e.object(1));
-                try!(e.u8(0)); id.encode(e)
+                e.u8(1)?;
+                e.object(1)?;
+                e.u8(0)?; id.encode(e)
             }
             Identity::Pub(ref id) => {
-                try!(e.u8(2));
-                try!(e.object(1));
-                try!(e.u8(0)); id.encode(e)
+                e.u8(2)?;
+                e.object(1)?;
+                e.u8(0)?; id.encode(e)
             }
         }
     }
 
     fn decode<'s, R: io::Read + Skip>(d: &mut Decoder<R>) -> Result<Identity<'s>, DecodeError> {
-        match try!(d.u8()) {
+        match d.u8()? {
             1 => {
-                let n = try!(d.object());
+                let n = d.object()?;
                 let mut keypair = None;
                 for _ in 0 .. n {
-                    match try!(d.u8()) {
+                    match d.u8()? {
                         0 =>
                             if keypair.is_some() {
                                 return Err(DecodeError::DuplicateField("identity keypair"))
                             } else {
-                                keypair = Some(Identity::Sec(Cow::Owned(try!(IdentityKeyPair::decode(d)))))
+                                keypair = Some(Identity::Sec(Cow::Owned(IdentityKeyPair::decode(d)?)))
                             },
-                        _ => try!(d.skip())
+                        _ => d.skip()?
                     }
                 }
                 keypair.ok_or(DecodeError::MissingField("identity keypair"))
             }
             2 => {
-                let n = try!(d.object());
+                let n = d.object()?;
                 let mut key = None;
                 for _ in 0 .. n {
-                    match try!(d.u8()) {
+                    match d.u8()? {
                         0 =>
                             if key.is_some() {
                                 return Err(DecodeError::DuplicateField("identity key"))
                             } else {
-                                key = Some(Identity::Pub(Cow::Owned(try!(IdentityKey::decode(d)))))
+                                key = Some(Identity::Pub(Cow::Owned(IdentityKey::decode(d)?)))
                             },
-                        _ => try!(d.skip())
+                        _ => d.skip()?
                     }
                 }
                 key.ok_or(DecodeError::MissingField("identity key"))
