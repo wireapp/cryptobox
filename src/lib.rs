@@ -45,7 +45,9 @@ pub struct CBox<S> {
 
 impl CBox<FileStore> {
     pub fn file_open<P: AsRef<OsStr>>(path: P) -> Result<CBox<FileStore>, CBoxError<FileStore>> {
-        proteus::init();
+        if !proteus::init() {
+            return Err(CBoxError::InitError)
+        }
         let store = try!(FileStore::new(Path::new(path.as_ref())));
         let ident = match try!(store.load_identity()) {
             Some(Identity::Sec(i)) => i.into_owned(),
@@ -63,7 +65,9 @@ impl CBox<FileStore> {
     }
 
     pub fn file_open_with<P: AsRef<OsStr>>(path: P, ident: IdentityKeyPair, mode: IdentityMode) -> Result<CBox<FileStore>, CBoxError<FileStore>> {
-        proteus::init();
+        if !proteus::init() {
+            return Err(CBoxError::InitError)
+        }
         let store = try!(FileStore::new(Path::new(path.as_ref())));
         match try!(store.load_identity()) {
             Some(Identity::Sec(local)) => {
@@ -234,7 +238,8 @@ pub enum CBoxError<S: Store> {
     StorageError(S::Error),
     DecodeError(DecodeError),
     EncodeError(EncodeError),
-    IdentityError
+    IdentityError,
+    InitError
 }
 
 impl<S: Store> fmt::Display for CBoxError<S> {
@@ -244,7 +249,8 @@ impl<S: Store> fmt::Display for CBoxError<S> {
             CBoxError::StorageError(ref e) => write!(f, "CBoxError: storage error: {}", *e),
             CBoxError::DecodeError(ref e)  => write!(f, "CBoxError: decode error: {}", *e),
             CBoxError::EncodeError(ref e)  => write!(f, "CBoxError: encode error: {}", *e),
-            CBoxError::IdentityError       => write!(f, "CBoxError: identity error")
+            CBoxError::IdentityError       => write!(f, "CBoxError: identity error"),
+            CBoxError::InitError           => write!(f, "CBoxError: initialisation error")
         }
     }
 }
@@ -260,7 +266,8 @@ impl<S: Store + fmt::Debug> Error for CBoxError<S> {
             CBoxError::StorageError(ref e) => Some(e),
             CBoxError::DecodeError(ref e)  => Some(e),
             CBoxError::EncodeError(ref e)  => Some(e),
-            CBoxError::IdentityError       => None
+            CBoxError::IdentityError       => None,
+            CBoxError::InitError           => None
         }
     }
 }
