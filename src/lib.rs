@@ -246,7 +246,7 @@ pub enum CBoxError<S: Store> {
 impl<S: Store> fmt::Display for CBoxError<S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            CBoxError::ProteusError(ref e) => write!(f, "CBoxError: decrypt error: {}", e),
+            CBoxError::ProteusError(ref e) => write!(f, "CBoxError: proteus error: {}", e),
             CBoxError::StorageError(ref e) => write!(f, "CBoxError: storage error: {}", *e),
             CBoxError::DecodeError(ref e)  => write!(f, "CBoxError: decode error: {}", *e),
             CBoxError::EncodeError(ref e)  => write!(f, "CBoxError: encode error: {}", *e),
