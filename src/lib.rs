@@ -31,7 +31,7 @@ use std::sync::Arc;
 pub use identity::{Identity, IdentityMode};
 use proteus::keys::{self, IdentityKeyPair, PreKey, PreKeyBundle, PreKeyId};
 use proteus::message::Envelope;
-use proteus::session::{DecryptError, PreKeyStore, Session};
+use proteus::session::{PreKeyStore, Session};
 use proteus::{DecodeError, EncodeError};
 use store::Store;
 use store::file::{FileStore, FileStoreError};
@@ -102,12 +102,13 @@ impl CBox<FileStore> {
 
 impl<S: Store> CBox<S> {
     pub fn session_from_prekey(&self, sid: String, key: &[u8]) -> Result<CBoxSession<S>, CBoxError<S>> {
-        let prekey = try!(PreKeyBundle::deserialise(key));
-        Ok(CBoxSession {
+        let prekey  = try!(PreKeyBundle::deserialise(key));
+        let session = CBoxSession {
             sident:  sid,
             store:   ReadOnlyStore::new(self.store.clone()),
-            session: Session::init_from_prekey(self.ident.clone(), prekey)
-        })
+            session: Session::init_from_prekey(self.ident.clone(), prekey)?
+        };
+        Ok(session)
     }
 
     pub fn session_from_message(&self, sid: String, envelope: &[u8]) -> Result<(CBoxSession<S>, Vec<u8>), CBoxError<S>> {
@@ -234,7 +235,7 @@ impl<S: Store> PreKeyStore for ReadOnlyStore<S> {
 
 #[derive(Debug)]
 pub enum CBoxError<S: Store> {
-    DecryptError(DecryptError<S::Error>),
+    ProteusError(proteus::session::Error<S::Error>),
     StorageError(S::Error),
     DecodeError(DecodeError),
     EncodeError(EncodeError),
@@ -245,7 +246,7 @@ pub enum CBoxError<S: Store> {
 impl<S: Store> fmt::Display for CBoxError<S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            CBoxError::DecryptError(ref e) => write!(f, "CBoxError: decrypt error: {}", e),
+            CBoxError::ProteusError(ref e) => write!(f, "CBoxError: decrypt error: {}", e),
             CBoxError::StorageError(ref e) => write!(f, "CBoxError: storage error: {}", *e),
             CBoxError::DecodeError(ref e)  => write!(f, "CBoxError: decode error: {}", *e),
             CBoxError::EncodeError(ref e)  => write!(f, "CBoxError: encode error: {}", *e),
@@ -262,7 +263,7 @@ impl<S: Store + fmt::Debug> Error for CBoxError<S> {
 
     fn cause(&self) -> Option<&Error> {
         match *self {
-            CBoxError::DecryptError(ref e) => Some(e),
+            CBoxError::ProteusError(ref e) => Some(e),
             CBoxError::StorageError(ref e) => Some(e),
             CBoxError::DecodeError(ref e)  => Some(e),
             CBoxError::EncodeError(ref e)  => Some(e),
@@ -278,9 +279,9 @@ impl From<FileStoreError> for CBoxError<FileStore> {
     }
 }
 
-impl<S: Store> From<DecryptError<S::Error>> for CBoxError<S> {
-    fn from(e: DecryptError<S::Error>) -> CBoxError<S> {
-        CBoxError::DecryptError(e)
+impl<S: Store> From<proteus::session::Error<S::Error>> for CBoxError<S> {
+    fn from(e: proteus::session::Error<S::Error>) -> CBoxError<S> {
+        CBoxError::ProteusError(e)
     }
 }
 
