@@ -20,6 +20,12 @@ use proteus::keys::{IdentityKeyPair, IdentityKey};
 use std::borrow::Cow;
 use std::io;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IdentityMode {
+    Complete,
+    Public
+}
+
 pub enum Identity<'r> {
     Sec(Cow<'r, IdentityKeyPair>),
     Pub(Cow<'r, IdentityKey>)
