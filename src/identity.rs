@@ -64,7 +64,12 @@ impl<'r> Identity<'r> {
                 let mut keypair = None;
                 for _ in 0 .. n {
                     match try!(d.u8()) {
-                        0 => keypair = Some(Identity::Sec(Cow::Owned(try!(IdentityKeyPair::decode(d))))),
+                        0 =>
+                            if keypair.is_some() {
+                                return Err(DecodeError::DuplicateField("identity keypair"))
+                            } else {
+                                keypair = Some(Identity::Sec(Cow::Owned(try!(IdentityKeyPair::decode(d)))))
+                            },
                         _ => try!(d.skip())
                     }
                 }
@@ -75,7 +80,12 @@ impl<'r> Identity<'r> {
                 let mut key = None;
                 for _ in 0 .. n {
                     match try!(d.u8()) {
-                        0 => key = Some(Identity::Pub(Cow::Owned(try!(IdentityKey::decode(d))))),
+                        0 =>
+                            if key.is_some() {
+                                return Err(DecodeError::DuplicateField("identity key"))
+                            } else {
+                                key = Some(Identity::Pub(Cow::Owned(try!(IdentityKey::decode(d)))))
+                            },
                         _ => try!(d.skip())
                     }
                 }
