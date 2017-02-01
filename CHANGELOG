@@ -1,0 +1,12 @@
+1.0.0
+
+    * `CBox` and `CBoxSession` now use `Arc`s for `Store` and
+      `IdentityKeypair`.
+
+    * A new error code `CBoxError::InitError` is returned when library
+      initialisation of `proteus`/`sodiumoxide` fails.
+
+    * `CBoxError::DecryptError` has been renamed to `CBoxError::ProteusError`.
+
+    * The serialised `Identity` must no longer contain duplicate fields.
+
