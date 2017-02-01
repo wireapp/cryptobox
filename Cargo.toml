@@ -1,6 +1,6 @@
 [package]
 name         = "cryptobox"
-version      = "0.7.2"
+version      = "1.0.0"
 authors      = ["Wire Swiss GmbH <support@wire.com>"]
 description  = "High-level API for proteus with persistent storage."
 homepage     = "https://github.com/wireapp/cryptobox"
@@ -8,8 +8,7 @@ repository   = "git@github.com:wireapp/cryptobox.git"
 license      = "GPL-3.0"
 
 [dependencies]
-byteorder  = ">  0.3.0"
-cbor-codec = ">= 0.4.1"
+byteorder  = ">= 0.5.1"
+cbor-codec = ">= 0.7.0"
+proteus    = { git = "https://github.com/wireapp/proteus", tag = "v1.0.0" }
 
-[dependencies.proteus]
-git = "https://github.com/wireapp/proteus"
