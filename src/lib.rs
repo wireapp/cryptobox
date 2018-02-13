@@ -48,20 +48,9 @@ impl CBox<FileStore> {
         if !proteus::init() {
             return Err(CBoxError::InitError)
         }
+
         let store = try!(FileStore::new(Path::new(path.as_ref())));
-        let ident = match try!(store.load_identity()) {
-            Some(Identity::Sec(i)) => i.into_owned(),
-            Some(Identity::Pub(_)) => return Err(CBoxError::IdentityError),
-            None => {
-                let ident = IdentityKeyPair::new();
-                try!(store.save_identity(&Identity::Sec(Cow::Borrowed(&ident))));
-                ident
-            }
-        };
-        Ok(CBox {
-            ident: Arc::new(ident),
-            store: Arc::new(store)
-        })
+        CBox::create(store)
     }
 
     pub fn file_open_with<P: AsRef<OsStr>>(path: P, ident: IdentityKeyPair, mode: IdentityMode) -> Result<CBox<FileStore>, CBoxError<FileStore>> {
@@ -101,6 +90,22 @@ impl CBox<FileStore> {
 }
 
 impl<S: Store> CBox<S> {
+    pub fn create(store: S) -> Result<CBox<S>, CBoxError<S>> where CBoxError<S>: std::convert::From<<S as store::Store>::Error> {
+        let ident = match store.load_identity()? {
+            Some(Identity::Sec(i)) => i.into_owned(),
+            Some(Identity::Pub(_)) => return Err(CBoxError::IdentityError),
+            None => {
+                let ident = IdentityKeyPair::new();
+                try!(store.save_identity(&Identity::Sec(Cow::Borrowed(&ident))));
+                ident
+            }
+        };
+        Ok(CBox {
+            ident: Arc::new(ident),
+            store: Arc::new(store)
+        })
+    }
+
     pub fn session_from_prekey(&self, sid: String, key: &[u8]) -> Result<CBoxSession<S>, CBoxError<S>> {
         let prekey  = try!(PreKeyBundle::deserialise(key));
         let session = CBoxSession {
