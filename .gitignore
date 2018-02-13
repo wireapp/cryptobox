@@ -5,3 +5,4 @@ Cargo.lock
 *.swo
 tags
 ID
+.idea/
