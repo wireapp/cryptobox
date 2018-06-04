@@ -16,17 +16,20 @@
 extern crate byteorder;
 extern crate cbor;
 extern crate proteus;
+extern crate postgres;
+extern crate serde;
+extern crate serde_json;
 
 pub mod store;
 mod identity;
 
 use std::borrow::Cow;
 use std::error::Error;
-use std::ffi::OsStr;
+//use std::ffi::OsStr;
 use std::fmt;
 use std::mem;
-use std::path::Path;
-use std::sync::Arc;
+//use std::path::Path;
+//use std::sync::Arc;
 
 pub use identity::{Identity, IdentityMode};
 use proteus::keys::{self, IdentityKeyPair, PreKey, PreKeyBundle, PreKeyId};
@@ -35,6 +38,10 @@ use proteus::session::{PreKeyStore, Session};
 use proteus::{DecodeError, EncodeError};
 use store::Store;
 use store::file::{FileStore, FileStoreError};
+use postgres::Connection;
+use std::sync::*;
+
+pub type Armconn =  Arc<Mutex<Connection>>;
 
 // CBox /////////////////////////////////////////////////////////////////////
 
@@ -44,11 +51,12 @@ pub struct CBox<S> {
 }
 
 impl CBox<FileStore> {
-    pub fn file_open<P: AsRef<OsStr>>(path: P) -> Result<CBox<FileStore>, CBoxError<FileStore>> {
+    pub fn db_open(id :String, sql: Armconn) -> Result<CBox<FileStore>, CBoxError<FileStore>> {
         if !proteus::init() {
             return Err(CBoxError::InitError)
         }
-        let store = try!(FileStore::new(Path::new(path.as_ref())));
+//        let store = try!(FileStore::new(Path::new(path.as_ref())));
+        let store = try!(FileStore::new(id, sql));
         let ident = match try!(store.load_identity()) {
             Some(Identity::Sec(i)) => i.into_owned(),
             Some(Identity::Pub(_)) => return Err(CBoxError::IdentityError),
@@ -64,11 +72,11 @@ impl CBox<FileStore> {
         })
     }
 
-    pub fn file_open_with<P: AsRef<OsStr>>(path: P, ident: IdentityKeyPair, mode: IdentityMode) -> Result<CBox<FileStore>, CBoxError<FileStore>> {
+    pub fn db_open_with(id :String, sql: Armconn, ident: IdentityKeyPair, mode: IdentityMode) -> Result<CBox<FileStore>, CBoxError<FileStore>> {
         if !proteus::init() {
             return Err(CBoxError::InitError)
         }
-        let store = try!(FileStore::new(Path::new(path.as_ref())));
+        let store = try!(FileStore::new(id, sql));
         match try!(store.load_identity()) {
             Some(Identity::Sec(local)) => {
                 if ident.public_key != local.public_key {
@@ -140,6 +148,18 @@ impl<S: Store> CBox<S> {
 
     pub fn session_delete(&self, sid: &str) -> Result<(), CBoxError<S>> {
         try!(self.store.delete_session(sid).map_err(CBoxError::StorageError));
+        Ok(())
+    }
+
+    pub fn load_state(&self) -> Result<Vec<u8>, CBoxError<S>> {
+        match try!(self.store.load_state().map_err(CBoxError::StorageError)) {
+            Some(data)=> Ok(data),
+            None     => Err(CBoxError::InitError)
+        }
+
+    }
+    pub fn save_state(&self, data: &Vec<u8>) -> Result<(), CBoxError<S>> {
+        try!(self.store.save_state(data).map_err(CBoxError::StorageError));
         Ok(())
     }
 
@@ -296,3 +316,5 @@ impl<S: Store> From<EncodeError> for CBoxError<S> {
         CBoxError::EncodeError(e)
     }
 }
+
+

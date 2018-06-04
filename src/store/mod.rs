@@ -17,6 +17,7 @@ use std::borrow::Borrow;
 use identity::Identity;
 use proteus::keys::{IdentityKeyPair, PreKey, PreKeyId};
 use proteus::session::Session;
+//use serde::{Deserialize, Serialize};
 
 pub mod file;
 
@@ -29,6 +30,9 @@ pub trait Store {
 
     fn load_identity<'s>(&self) -> Result<Option<Identity<'s>>, Self::Error>;
     fn save_identity(&self, id: &Identity) -> Result<(), Self::Error>;
+
+    fn load_state(&self) -> Result<Option<Vec<u8>>, Self::Error>;
+    fn save_state(&self,  data: &Vec<u8>) -> Result<(), Self::Error>;
 
     fn load_prekey(&self, id: PreKeyId) -> Result<Option<PreKey>, Self::Error>;
     fn add_prekey(&self, key: &PreKey) -> Result<(), Self::Error>;
