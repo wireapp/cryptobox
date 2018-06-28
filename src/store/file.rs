@@ -182,14 +182,14 @@ impl Store for FileStore {
 
 
     fn add_prekey(&self, key: &PreKey) -> FileStoreResult<()> {
-        let key32 =key.key_id.value() as u32; //as i16 for SMALLINT
+        let key32 =key.key_id.value() as i64; //as i16 for SMALLINT
         self.dbconn.lock().unwrap().execute("INSERT INTO cbox.prekey (botID, prekey, prekeyValue) VALUES ($1, $2, $3)",
                             &[&self.botID, &key32 , &try!(key.serialise())]).unwrap();
         Ok(())
     }
 
     fn load_prekey(&self, id: PreKeyId) -> FileStoreResult<Option<PreKey>> {
-        let key32 =id.value() as u32;
+        let key32 =id.value() as i64;
         let mut v: Option<Vec<u8>> =None;
         for row in &self.dbconn.lock().unwrap().query("SELECT prekeyValue FROM cbox.prekey WHERE botID=$1 AND prekey=$2", &[&self.botID, &key32]).unwrap() {
             v = row.get(0);
@@ -205,7 +205,7 @@ impl Store for FileStore {
     }
 
     fn delete_prekey(&self, id: PreKeyId) -> FileStoreResult<()> {
-        let key32 =id.value() as u32;
+        let key32 =id.value() as i64;
         self.dbconn.lock().unwrap().execute("DELETE FROM cbox.prekey WHERE botID=$1 AND prekey=$2",
                             &[&self.botID, &key32]).unwrap();
         Ok(())
@@ -236,7 +236,7 @@ fn initCheckPrekeysTable(conn: &Armconn) {
     conn.lock().unwrap().execute(
         "CREATE TABLE IF NOT EXISTS cbox.prekey (
 botID    	UUID NOT NULL PRIMARY KEY,
-prekey      INT4,
+prekey      INT,
 prekeyValue BYTES,
 createdAt   TIMESTAMP Default  now(),
 updatedAt   TIMESTAMP Default  now(),
@@ -258,7 +258,7 @@ fn initCheckVersionsTable(conn: &Armconn) {
     conn.lock().unwrap().execute(
         "CREATE TABLE IF NOT EXISTS cbox.version (
 botID    	UUID NOT NULL PRIMARY KEY,
-version     INT4,
+version     INT,
 createdAt   TIMESTAMP Default  now(),
 updatedAt   TIMESTAMP Default  now()
 ) ;",&[],
