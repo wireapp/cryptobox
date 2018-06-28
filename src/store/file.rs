@@ -30,7 +30,7 @@ use Armconn;
 use uuid::Uuid;
 
 #[derive(Copy, Clone, Eq, PartialEq)]
-struct Version(u32);
+struct Version(i64);
 
 const CURRENT_VERSION: Version = Version(1);
 
@@ -81,7 +81,7 @@ impl FileStore {
 
     fn read_version(conn: &Armconn, bid: &Uuid) -> FileStoreResult<Option<Version>> {
 
-        let mut v: u32 =0;
+        let mut v: i64 =0;
         for row in &conn.lock().unwrap().query("SELECT version FROM cbox.version WHERE botID=$1", &[&bid]).unwrap() {
             v = row.get(0);
 //            println!("SELECT version : {:?}  FROM cbox.version WHERE botID=  {:?}", v, bid);
