@@ -20,6 +20,8 @@ extern crate postgres;
 extern crate serde;
 extern crate serde_json;
 extern crate uuid;
+extern crate r2d2;
+extern crate r2d2_postgres;
 
 pub mod store;
 mod identity;
@@ -39,9 +41,15 @@ use proteus::session::{PreKeyStore, Session};
 use proteus::{DecodeError, EncodeError};
 use store::Store;
 use store::file::{FileStore, FileStoreError};
-use postgres::Connection;
+//use postgres::Connection;
 use std::sync::*;
 use uuid::Uuid;
+use r2d2::PooledConnection;
+use r2d2_postgres::{PostgresConnectionManager};
+
+
+
+type Connection= PooledConnection<PostgresConnectionManager>;
 pub type Armconn =  Arc<Mutex<Connection>>;
 
 // CBox /////////////////////////////////////////////////////////////////////
@@ -52,12 +60,12 @@ pub struct CBox<S> {
 }
 
 impl CBox<FileStore> {
-    pub fn db_open(id :Uuid, sql: Armconn) -> Result<CBox<FileStore>, CBoxError<FileStore>> {
+    pub fn db_open(id :Uuid, conn: Armconn) -> Result<CBox<FileStore>, CBoxError<FileStore>> {
         if !proteus::init() {
             return Err(CBoxError::InitError)
         }
 //        let store = try!(FileStore::new(Path::new(path.as_ref())));
-        let store = try!(FileStore::new(id, sql));
+        let store = try!(FileStore::new(id, conn));
         let ident = match try!(store.load_identity()) {
             Some(Identity::Sec(i)) => i.into_owned(),
             Some(Identity::Pub(_)) => return Err(CBoxError::IdentityError),
@@ -73,11 +81,11 @@ impl CBox<FileStore> {
         })
     }
 
-    pub fn db_open_with(id :Uuid, sql: Armconn, ident: IdentityKeyPair, mode: IdentityMode) -> Result<CBox<FileStore>, CBoxError<FileStore>> {
+    pub fn db_open_with(id :Uuid, conn: Armconn, ident: IdentityKeyPair, mode: IdentityMode) -> Result<CBox<FileStore>, CBoxError<FileStore>> {
         if !proteus::init() {
             return Err(CBoxError::InitError)
         }
-        let store = try!(FileStore::new(id, sql));
+        let store = try!(FileStore::new(id, conn));
         match try!(store.load_identity()) {
             Some(Identity::Sec(local)) => {
                 if ident.public_key != local.public_key {
