@@ -44,12 +44,12 @@ use store::file::{FileStore, FileStoreError};
 //use postgres::Connection;
 use std::sync::*;
 use uuid::Uuid;
-use r2d2::PooledConnection;
+use r2d2::{Pool, PooledConnection};
 use r2d2_postgres::{PostgresConnectionManager};
 
 
-
-type Connection= PooledConnection<PostgresConnectionManager>;
+pub type ConnPool= Pool<PostgresConnectionManager>;
+pub type Connection= PooledConnection<PostgresConnectionManager>;
 pub type Armconn =  Arc<Mutex<Connection>>;
 
 // CBox /////////////////////////////////////////////////////////////////////
