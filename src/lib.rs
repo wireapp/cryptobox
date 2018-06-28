@@ -19,6 +19,7 @@ extern crate proteus;
 extern crate postgres;
 extern crate serde;
 extern crate serde_json;
+extern crate uuid;
 
 pub mod store;
 mod identity;
@@ -40,7 +41,7 @@ use store::Store;
 use store::file::{FileStore, FileStoreError};
 use postgres::Connection;
 use std::sync::*;
-
+use uuid::Uuid;
 pub type Armconn =  Arc<Mutex<Connection>>;
 
 // CBox /////////////////////////////////////////////////////////////////////
@@ -51,7 +52,7 @@ pub struct CBox<S> {
 }
 
 impl CBox<FileStore> {
-    pub fn db_open(id :String, sql: Armconn) -> Result<CBox<FileStore>, CBoxError<FileStore>> {
+    pub fn db_open(id :Uuid, sql: Armconn) -> Result<CBox<FileStore>, CBoxError<FileStore>> {
         if !proteus::init() {
             return Err(CBoxError::InitError)
         }
@@ -72,7 +73,7 @@ impl CBox<FileStore> {
         })
     }
 
-    pub fn db_open_with(id :String, sql: Armconn, ident: IdentityKeyPair, mode: IdentityMode) -> Result<CBox<FileStore>, CBoxError<FileStore>> {
+    pub fn db_open_with(id :Uuid, sql: Armconn, ident: IdentityKeyPair, mode: IdentityMode) -> Result<CBox<FileStore>, CBoxError<FileStore>> {
         if !proteus::init() {
             return Err(CBoxError::InitError)
         }

@@ -27,6 +27,7 @@ use std::fmt;
 use postgres::error as PgError;
 use super::*;
 use Armconn;
+use uuid::Uuid;
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 struct Version(u32);
@@ -39,7 +40,7 @@ const CURRENT_VERSION: Version = Version(1);
 
 #[derive(Debug)]
 pub struct FileStore {
-    botID: String,
+    botID: Uuid,
 
     dbconn: Armconn
 }
@@ -49,7 +50,7 @@ pub struct FileStore {
 //let c_mutex = mutex.clone();
 
 impl FileStore {
-    pub fn new(id: String, conn: Armconn) -> FileStoreResult<FileStore> {
+    pub fn new(id: Uuid, conn: Armconn) -> FileStoreResult<FileStore> {
 
 
 //        let conn = Connection::connect(sql, TlsMode::None)
@@ -78,7 +79,7 @@ impl FileStore {
         Ok(fs)
     }
 
-    fn read_version(conn: &Armconn, bid: &str) -> FileStoreResult<Option<Version>> {
+    fn read_version(conn: &Armconn, bid: &Uuid) -> FileStoreResult<Option<Version>> {
 
         let mut v: u32 =0;
         for row in &conn.lock().unwrap().query("SELECT version FROM cbox.version WHERE botID=$1", &[&bid]).unwrap() {
@@ -93,7 +94,7 @@ impl FileStore {
         }
     }
 
-    fn write_version(conn: &Armconn, bid: &str, Version(v): Version) -> FileStoreResult<()> {
+    fn write_version(conn: &Armconn, bid: &Uuid, Version(v): Version) -> FileStoreResult<()> {
         conn.lock().unwrap().execute("INSERT INTO cbox.version (botID, version) VALUES ($1, $2)", &[&bid, &v]).unwrap();
         Ok(())
     }
@@ -181,7 +182,7 @@ impl Store for FileStore {
 
 
     fn add_prekey(&self, key: &PreKey) -> FileStoreResult<()> {
-        let key32 =key.key_id.value() as u32;
+        let key32 =key.key_id.value() as u32; //as i16 for SMALLINT
         self.dbconn.lock().unwrap().execute("INSERT INTO cbox.prekey (botID, prekey, prekeyValue) VALUES ($1, $2, $3)",
                             &[&self.botID, &key32 , &try!(key.serialise())]).unwrap();
         Ok(())
