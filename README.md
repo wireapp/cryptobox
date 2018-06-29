@@ -15,3 +15,9 @@ THIS BRANCH HAS EXPERIMENTAL SUPPORT FOR CRDB.
 
 [2]: https://github.com/wireapp/proteus
 [3]: https://github.com/trevp/axolotl/wiki
+
+# CockroachDB
+
+Replace the file system backend to a nicely distributed DB ; 
+Since it is suitable for server side distrubuted uses .
+There is also rust and golang use examples ,please check the [wireapp/cryptobox-c](https://github.com/wireapp/cryptobox-c) 's cockroachdb-experimental branch.

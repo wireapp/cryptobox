@@ -12,98 +12,94 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+#![allow(non_snake_case)]
+//use serde_json;
+//use serde_json::error::Error as SerdeError;
+//use serde::{Deserialize, Serialize};
 use identity::Identity;
 use proteus::{DecodeError, EncodeError};
 use proteus::keys::{PreKey, PreKeyId, IdentityKeyPair};
 use proteus::session::Session;
-use std::borrow::{Borrow, Cow};
+use std::borrow::{Borrow};
 use std::error::Error;
 use std::fmt;
-use std::fs::{self, File};
-use std::io::{self, Read, Write, ErrorKind};
-use std::path::{Path, PathBuf};
+//use std::path::Path;
+use postgres::error as PgError;
 use super::*;
+use Armconn;
+use uuid::Uuid;
 
 #[derive(Copy, Clone, Eq, PartialEq)]
-struct Version(u16);
+struct Version(i64);
 
 const CURRENT_VERSION: Version = Version(1);
 
-// FileStore ////////////////////////////////////////////////////////////////
+// PGDBStore ////////////////////////////////////////////////////////////////
+
+
 
 #[derive(Debug)]
 pub struct FileStore {
-    root_dir:     PathBuf,
-    session_dir:  PathBuf,
-    prekey_dir:   PathBuf,
-    identity_dir: PathBuf
+    botID: Uuid,
+
+    dbconn: Armconn
 }
 
-impl FileStore {
-    pub fn new(root: &Path) -> FileStoreResult<FileStore> {
-        let fs = FileStore {
-            root_dir:     PathBuf::from(root),
-            session_dir:  root.join("sessions"),
-            prekey_dir:   root.join("prekeys"),
-            identity_dir: root.join("identities")
-        };
 
-        match try!(FileStore::read_version(&fs.root_dir)) {
+//let mutex = Arc::new(Mutex::new(conn));
+//let c_mutex = mutex.clone();
+
+impl FileStore {
+    pub fn new(id: Uuid, conn: Armconn) -> FileStoreResult<FileStore> {
+
+
+//        let conn = Connection::connect(sql, TlsMode::None)
+//            .unwrap();
+
+
+
+        let fs = FileStore {
+//            botID:  root.file_stem().unwrap().to_str().unwrap().to_owned(),
+            botID:  id,
+            dbconn: conn
+        };
+        initCheckSessionsTable(&fs.dbconn);
+        initCheckPrekeysTable(&fs.dbconn);
+        initCheckVersionsTable(&fs.dbconn);
+        initCheckDatasTable(&fs.dbconn);
+        initCheckIdentitiesTable(&fs.dbconn);
+        // Print out the balances.
+        println!("Initial cbox:");
+        match try!(FileStore::read_version(&fs.dbconn, &fs.botID)) {
             Some(v) => { try!(FileStore::migrate(v)); return Ok(fs) },
             None    => ()
         }
-
-        if !dir_exists(&fs.session_dir) {
-            try!(fs::create_dir(&fs.session_dir));
-        }
-        if !dir_exists(&fs.prekey_dir) {
-            try!(fs::create_dir(&fs.prekey_dir));
-        }
-        if !dir_exists(&fs.identity_dir) {
-            try!(fs::create_dir(&fs.identity_dir));
-        } else {
-            // Legacy: Migrate old "local_identity"
-            let p = fs.identity_dir.join("local_identity");
-            // 1. load old identity
-            match try!(load_file(&p)) {
-                None    => (),
-                Some(b) => {
-                    let kp = try!(IdentityKeyPair::deserialise(&b));
-                    let i = Identity::Sec(Cow::Borrowed(&kp));
-                    // 2. write new local identity
-                    try!(fs.save_identity(&i));
-                    // 3. delete old identity
-                    try!(remove_file(&p));
-                }
-            };
-        }
-
-        try!(FileStore::write_version(&fs.root_dir, CURRENT_VERSION));
+        try!(FileStore::write_version(&fs.dbconn, &fs.botID, CURRENT_VERSION));
 
         Ok(fs)
     }
 
-    fn read_version(root: &PathBuf) -> FileStoreResult<Option<Version>> {
-        let p = root.join("version");
-        match try!(open_file(&p)) {
-            Some(mut f) => {
-                let v = try!(f.read_u16::<BigEndian>());
-                Ok(Some(Version(v)))
-            }
-            None => Ok(None)
+    fn read_version(conn: &Armconn, bid: &Uuid) -> FileStoreResult<Option<Version>> {
+
+        let mut v: i64 =0;
+        for row in &conn.lock().unwrap().query("SELECT version FROM cbox.version WHERE botID=$1", &[&bid]).unwrap() {
+            v = row.get(0);
+//            println!("SELECT version : {:?}  FROM cbox.version WHERE botID=  {:?}", v, bid);
+        }
+
+
+        match v {
+            0 =>  Ok(None),
+            _ =>  Ok(Some(Version(v)))
         }
     }
 
-    fn write_version(root: &PathBuf, Version(v): Version) -> FileStoreResult<()> {
-        let p = root.join("version");
-        let mut b = [0;2];
-        try!(b.as_mut().write_u16::<BigEndian>(v));
-        write_file(&p, &b, true)
+    fn write_version(conn: &Armconn, bid: &Uuid, Version(v): Version) -> FileStoreResult<()> {
+        conn.lock().unwrap().execute("INSERT INTO cbox.version (botID, version) VALUES ($1, $2)", &[&bid, &v]).unwrap();
+        Ok(())
     }
 
-    fn migrate(_: Version) -> io::Result<()> {
+    fn migrate(_: Version) -> FileStoreResult<()> {
         // Future migrations for v < CURRENT_VERSION go here
         Ok(())
     }
@@ -113,109 +109,171 @@ impl Store for FileStore {
     type Error = FileStoreError;
 
     fn load_session<I: Borrow<IdentityKeyPair>>(&self, li: I, id: &str) -> FileStoreResult<Option<Session<I>>> {
-        let path = self.session_dir.join(id);
-        match try!(load_file(&path)) {
+
+        let mut v: Option<Vec<u8>> =None;
+        for row in &self.dbconn.lock().unwrap().query("SELECT sessionValue FROM cbox.session WHERE botID=$1 AND session=$2", &[&self.botID, &id]).unwrap() {
+            v = row.get(0);
+//            println!("SELECT sessionValue : {:?}  FROM cbox.session WHERE botID=  {:?}", v, bid);
+        }
+
+        match v {
             Some(b) => Ok(Some(try!(Session::deserialise(li, &b)))),
             None    => Ok(None)
         }
     }
 
     fn save_session<I: Borrow<IdentityKeyPair>>(&self, id: &str, s: &Session<I>) -> FileStoreResult<()> {
-        let path = self.session_dir.join(id);
-        write_file(&path, &try!(s.serialise()), false)
+        self.dbconn.lock().unwrap().execute("INSERT INTO cbox.session (botID, session, sessionValue) VALUES ($1, $2, $3)",
+                     &[&self.botID, &id, &try!(s.serialise())]).unwrap();
+        Ok(())
     }
 
     fn delete_session(&self, id: &str) -> FileStoreResult<()> {
-        let path = self.session_dir.join(id);
-        remove_file(&path)
+        self.dbconn.lock().unwrap().execute("DELETE FROM cbox.session WHERE botID=$1 AND session=$2",
+                            &[&self.botID, &id]).unwrap();
+        Ok(())
     }
 
     fn load_identity<'s>(&self) -> FileStoreResult<Option<Identity<'s>>> {
-        let path = self.identity_dir.join("local");
-        match try!(load_file(&path)) {
+
+        let mut v: Option<Vec<u8>> =None;
+        for row in &self.dbconn.lock().unwrap().query("SELECT identitiyLocal FROM cbox.identitiy WHERE botID=$1", &[&self.botID]).unwrap() {
+            v = row.get(0);
+//            println!("SELECT identitiyLocal : {:?}  FROM cbox.identitiy WHERE botID=  {:?}", v, bid);
+        }
+
+        match v {
             Some(b) => Identity::deserialise(&b).map_err(From::from).map(Some),
             None    => Ok(None)
         }
     }
 
     fn save_identity(&self, id: &Identity) -> FileStoreResult<()> {
-        let path = self.identity_dir.join("local");
-        write_file(&path, &try!(id.serialise()), true)
+        self.dbconn.lock().unwrap().execute("INSERT INTO cbox.identitiy (botID, identitiyLocal) VALUES ($1, $2)",
+                            &[&self.botID, &try!(id.serialise())]).unwrap();
+        Ok(())
     }
 
-    fn add_prekey(&self, key: &PreKey) -> FileStoreResult<()> {
-        let path = self.prekey_dir.join(&key.key_id.value().to_string());
-        write_file(&path, &try!(key.serialise()), true)
-    }
 
-    fn load_prekey(&self, id: PreKeyId) -> FileStoreResult<Option<PreKey>> {
-        let path = self.prekey_dir.join(&id.value().to_string());
-        match try!(load_file(&path)) {
-            Some(b) => PreKey::deserialise(&b).map_err(From::from).map(Some),
+
+    fn load_state(&self) -> FileStoreResult<Option<Vec<u8>>>
+//        where for<'de> T: Deserialize<'de>
+    {
+
+        let mut v: Option<Vec<u8>> =None;
+        for row in &self.dbconn.lock().unwrap().query("SELECT data FROM cbox.datas WHERE botID=$1", &[&self.botID]).unwrap() {
+            v = row.get(0);
+//            println!("SELECT data : {:?}  FROM cbox.datas WHERE botID=  {:?}", v, bid);
+        }
+
+        match v {
+            Some(b) => Ok(Some(b)),
             None    => Ok(None)
         }
     }
 
-    fn delete_prekey(&self, id: PreKeyId) -> FileStoreResult<()> {
-        let path = self.prekey_dir.join(&id.value().to_string());
-        remove_file(&path)
+    fn save_state(&self, data: &Vec<u8>) -> FileStoreResult<()>
+//        where T: Serialize
+    {
+        self.dbconn.lock().unwrap().execute("INSERT INTO cbox.datas (botID, data) VALUES ($1, $2)",
+                            &[&self.botID, &data]).unwrap();
+        Ok(())
     }
-}
 
-fn open_file(p: &Path) -> FileStoreResult<Option<File>> {
-    File::open(p).map(Some)
-        .or_else(|e|
-            if e.kind() == ErrorKind::NotFound {
-                Ok(None)
-            } else {
-                Err(e)
-            }
-        ).map_err(From::from)
-}
 
-fn load_file(p: &Path) -> FileStoreResult<Option<Vec<u8>>> {
-    let file = match try!(open_file(p)) {
-        Some(f) => f,
-        None    => return Ok(None)
-    };
+    fn add_prekey(&self, key: &PreKey) -> FileStoreResult<()> {
+        let key32 =key.key_id.value() as i64; //as i16 for SMALLINT
+        self.dbconn.lock().unwrap().execute("INSERT INTO cbox.prekey (botID, prekey, prekeyValue) VALUES ($1, $2, $3)",
+                            &[&self.botID, &key32 , &try!(key.serialise())]).unwrap();
+        Ok(())
+    }
 
-    let mut buf = io::BufReader::new(file);
-    let mut dat = Vec::new();
-
-    try!(buf.read_to_end(&mut dat));
-    Ok(Some(dat))
-}
-
-fn write_file(p: &Path, bytes: &[u8], sync: bool) -> FileStoreResult<()> {
-    fn write(path: &Path, bytes: &[u8], sync: bool) -> io::Result<()> {
-        let mut file = try!(File::create(&path));
-        let mut rs = file.write_all(bytes);
-        if sync {
-            rs = rs.and(file.sync_all());
+    fn load_prekey(&self, id: PreKeyId) -> FileStoreResult<Option<PreKey>> {
+        let key32 =id.value() as i64;
+        let mut v: Option<Vec<u8>> =None;
+        for row in &self.dbconn.lock().unwrap().query("SELECT prekeyValue FROM cbox.prekey WHERE botID=$1 AND prekey=$2", &[&self.botID, &key32]).unwrap() {
+            v = row.get(0);
+//            println!("SELECT prekeyValue : {:?}  FROM cbox.prekey WHERE botID=  {:?}", v, bid);
         }
-        rs.or_else(|e| {
-            let _ = fs::remove_file(&path);
-            Err(e)
-        })
+
+        match v {
+            Some(b) => PreKey::deserialise(&b).map_err(From::from).map(Some),
+            None    => Ok(None)
+        }
+
+
     }
-    let path = p.with_extension("tmp");
-    try!(write(&path, bytes, sync));
-    fs::rename(&path, p).map_err(From::from)
+
+    fn delete_prekey(&self, id: PreKeyId) -> FileStoreResult<()> {
+        let key32 =id.value() as i64;
+        self.dbconn.lock().unwrap().execute("DELETE FROM cbox.prekey WHERE botID=$1 AND prekey=$2",
+                            &[&self.botID, &key32]).unwrap();
+        Ok(())
+    }
+
+
+
+
 }
 
-fn remove_file(p: &Path) -> FileStoreResult<()> {
-    fs::remove_file(p)
-        .or_else(|e|
-            if e.kind() == ErrorKind::NotFound {
-                Ok(())
-            } else {
-                Err(e)
-            }
-        ).map_err(From::from)
+
+
+
+fn initCheckSessionsTable(conn: &Armconn) {
+    conn.lock().unwrap().execute(
+        "CREATE TABLE IF NOT EXISTS cbox.session (
+botID    	     UUID NOT NULL PRIMARY KEY,
+session          STRING,
+sessionValue     BYTES,
+createdAt        TIMESTAMP Default  now(),
+updatedAt        TIMESTAMP Default  now(),
+INDEX 		     session_idx (session)
+) ;",&[],
+    ).unwrap();
 }
 
-fn dir_exists(p: &Path) -> bool {
-    fs::metadata(p).map(|m| m.is_dir()).unwrap_or(false)
+fn initCheckPrekeysTable(conn: &Armconn) {
+    conn.lock().unwrap().execute(
+        "CREATE TABLE IF NOT EXISTS cbox.prekey (
+botID    	UUID NOT NULL PRIMARY KEY,
+prekey      INT,
+prekeyValue BYTES,
+createdAt   TIMESTAMP Default  now(),
+updatedAt   TIMESTAMP Default  now(),
+INDEX 		prekey_idx (prekey)
+) ;",&[],
+    ).unwrap();
+}
+fn initCheckIdentitiesTable(conn: &Armconn) {
+    conn.lock().unwrap().execute(
+        "CREATE TABLE IF NOT EXISTS cbox.identitiy (
+botID    	        UUID NOT NULL PRIMARY KEY,
+identitiyLocal      BYTES,
+createdAt           TIMESTAMP Default  now(),
+updatedAt           TIMESTAMP Default  now()
+) ;",&[],
+    ).unwrap();
+}
+fn initCheckVersionsTable(conn: &Armconn) {
+    conn.lock().unwrap().execute(
+        "CREATE TABLE IF NOT EXISTS cbox.version (
+botID    	UUID NOT NULL PRIMARY KEY,
+version     INT,
+createdAt   TIMESTAMP Default  now(),
+updatedAt   TIMESTAMP Default  now()
+) ;",&[],
+    ).unwrap();
+}
+
+fn initCheckDatasTable(conn: &Armconn) {
+    conn.lock().unwrap().execute(
+        "CREATE TABLE IF NOT EXISTS cbox.data (
+botID    	UUID NOT NULL PRIMARY KEY,
+data        BYTES,
+createdAt   TIMESTAMP Default  now(),
+updatedAt   TIMESTAMP Default  now()
+) ;",&[],
+    ).unwrap();
 }
 
 // FileStoreError ///////////////////////////////////////////////////////////
@@ -224,17 +282,20 @@ pub type FileStoreResult<A> = Result<A, FileStoreError>;
 
 #[derive(Debug)]
 pub enum FileStoreError {
-    Io(io::Error),
+    Io(PgError::Error),
     Decode(DecodeError),
-    Encode(EncodeError)
+    Encode(EncodeError),
+//    Serde(SerdeError),
+
 }
 
 impl fmt::Display for FileStoreError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            FileStoreError::Io(ref e)     => write!(f, "FileStoreError: I/O error: {}", e),
+            FileStoreError::Io(ref e)     => write!(f, "FileStoreError: DB error: {}", e),
             FileStoreError::Decode(ref e) => write!(f, "FileStoreError: Decode error: {}", e),
-            FileStoreError::Encode(ref e) => write!(f, "FileStoreError: Encode error: {}", e)
+            FileStoreError::Encode(ref e) => write!(f, "FileStoreError: Encode error: {}", e),
+//            FileStoreError::Serde(ref e) => write!(f, "FileStoreError: Serde_json error: {}", e),
         }
     }
 }
@@ -248,13 +309,14 @@ impl Error for FileStoreError {
         match *self {
             FileStoreError::Io(ref e)     => Some(e),
             FileStoreError::Decode(ref e) => Some(e),
-            FileStoreError::Encode(ref e) => Some(e)
+            FileStoreError::Encode(ref e) => Some(e),
+//            FileStoreError::Serde(ref e) => Some(e),
         }
     }
 }
 
-impl From<io::Error> for FileStoreError {
-    fn from(e: io::Error) -> FileStoreError {
+impl From<PgError::Error> for FileStoreError {
+    fn from(e: PgError::Error) -> FileStoreError {
         FileStoreError::Io(e)
     }
 }
@@ -270,3 +332,9 @@ impl From<EncodeError> for FileStoreError {
         FileStoreError::Encode(e)
     }
 }
+
+//impl From<SerdeError> for FileStoreError {
+//    fn from(e: SerdeError) -> FileStoreError {
+//    FileStoreError::Serde(e)
+//    }
+//}
