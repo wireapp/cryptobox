@@ -13,3 +13,9 @@ Cryptobox provides a high-level API with persistent storage for the
 
 [2]: https://github.com/wireapp/proteus
 [3]: https://github.com/trevp/axolotl/wiki
+
+# CockroachDB
+
+Replace the file system backend to a nicely distributed DB ; 
+Since it is suitable for server side distrubuted uses .
+There is also rust and golang use examples ,please check the cryptobox-c 's crdb branch.
