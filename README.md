@@ -16,6 +16,6 @@ Cryptobox provides a high-level API with persistent storage for the
 
 # CockroachDB
 
-Replace the file system backend to a nicely distributed DB ; 
-Since it is suitable for server side distrubuted uses .
-There is also rust and golang use examples ,please check the [wireapp/cryptobox-c](https://github.com/wireapp/cryptobox-c) 's cockroachdb-experimental branch.
+Replace the file system backend to a nicely Distribution Database; 
+Since it is suitable for server side distrubution uses .
+There are also rust and golang use examples ,please check the [wireapp/cryptobox-c](https://github.com/wireapp/cryptobox-c) 's cockroachdb-experimental branch.
