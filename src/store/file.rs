@@ -123,7 +123,7 @@ impl Store for FileStore {
     }
 
     fn save_session<I: Borrow<IdentityKeyPair>>(&self, id: &str, s: &Session<I>) -> FileStoreResult<()> {
-        self.dbconn.lock().unwrap().execute("INSERT INTO cbox.session (botID, session, sessionValue) VALUES ($1, $2, $3)",
+        self.dbconn.lock().unwrap().execute("UPSERT  INTO cbox.session (botID, session, sessionValue) VALUES ($1, $2, $3)",
                      &[&self.botID, &id, &try!(s.serialise())]).unwrap();
         Ok(())
     }
@@ -175,7 +175,7 @@ impl Store for FileStore {
     fn save_state(&self, data: &Vec<u8>) -> FileStoreResult<()>
 //        where T: Serialize
     {
-        self.dbconn.lock().unwrap().execute("INSERT INTO cbox.data (botID, data) VALUES ($1, $2)",
+        self.dbconn.lock().unwrap().execute("UPSERT  INTO cbox.data (botID, data) VALUES ($1, $2)",
                             &[&self.botID, &data]).unwrap();
         Ok(())
     }
