@@ -161,7 +161,7 @@ impl Store for FileStore {
     {
 
         let mut v: Option<Vec<u8>> =None;
-        for row in &self.dbconn.lock().unwrap().query("SELECT data FROM cbox.datas WHERE botID=$1", &[&self.botID]).unwrap() {
+        for row in &self.dbconn.lock().unwrap().query("SELECT data FROM cbox.data WHERE botID=$1", &[&self.botID]).unwrap() {
             v = row.get(0);
 //            println!("SELECT data : {:?}  FROM cbox.datas WHERE botID=  {:?}", v, bid);
         }
@@ -175,7 +175,7 @@ impl Store for FileStore {
     fn save_state(&self, data: &Vec<u8>) -> FileStoreResult<()>
 //        where T: Serialize
     {
-        self.dbconn.lock().unwrap().execute("INSERT INTO cbox.datas (botID, data) VALUES ($1, $2)",
+        self.dbconn.lock().unwrap().execute("INSERT INTO cbox.data (botID, data) VALUES ($1, $2)",
                             &[&self.botID, &data]).unwrap();
         Ok(())
     }
