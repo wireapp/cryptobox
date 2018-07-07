@@ -14,6 +14,6 @@ proteus    = { git = "https://github.com/wireapp/proteus", branch = "develop" }
 r2d2 = "0.8"
 r2d2_postgres = "0.14"   # newer version, uses postgres 0.12
 postgres = { version = "0.15", features = ["with-uuid"] }
-uuid = { version = "0.6", features = ["serde"] }
+uuid = { version = "0.5", features = ["serde"] }
 serde = "1.0"
 serde_json = "1.0"
