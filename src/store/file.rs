@@ -123,7 +123,7 @@ impl Store for FileStore {
     }
 
     fn save_session<I: Borrow<IdentityKeyPair>>(&self, id: &str, s: &Session<I>) -> FileStoreResult<()> {
-        self.dbconn.lock().unwrap().execute("INSERT INTO cbox.session (botID, session, sessionValue) VALUES ($1, $2, $3)",
+        self.dbconn.lock().unwrap().execute("UPSERT  INTO cbox.session (botID, session, sessionValue) VALUES ($1, $2, $3)",
                      &[&self.botID, &id, &try!(s.serialise())]).unwrap();
         Ok(())
     }
@@ -161,7 +161,7 @@ impl Store for FileStore {
     {
 
         let mut v: Option<Vec<u8>> =None;
-        for row in &self.dbconn.lock().unwrap().query("SELECT data FROM cbox.datas WHERE botID=$1", &[&self.botID]).unwrap() {
+        for row in &self.dbconn.lock().unwrap().query("SELECT data FROM cbox.data WHERE botID=$1", &[&self.botID]).unwrap() {
             v = row.get(0);
 //            println!("SELECT data : {:?}  FROM cbox.datas WHERE botID=  {:?}", v, bid);
         }
@@ -175,7 +175,7 @@ impl Store for FileStore {
     fn save_state(&self, data: &Vec<u8>) -> FileStoreResult<()>
 //        where T: Serialize
     {
-        self.dbconn.lock().unwrap().execute("INSERT INTO cbox.datas (botID, data) VALUES ($1, $2)",
+        self.dbconn.lock().unwrap().execute("UPSERT  INTO cbox.data (botID, data) VALUES ($1, $2)",
                             &[&self.botID, &data]).unwrap();
         Ok(())
     }
@@ -222,12 +222,12 @@ impl Store for FileStore {
 fn initCheckSessionsTable(conn: &Armconn) {
     conn.lock().unwrap().execute(
         "CREATE TABLE IF NOT EXISTS cbox.session (
-botID    	     UUID NOT NULL PRIMARY KEY,
-session          STRING,
+session          STRING  NOT NULL PRIMARY KEY,
+botID    	     UUID,
 sessionValue     BYTES,
 createdAt        TIMESTAMP Default  now(),
 updatedAt        TIMESTAMP Default  now(),
-INDEX 		     session_idx (session)
+INDEX 		     botID_idx (botID)
 ) ;",&[],
     ).unwrap();
 }
@@ -235,12 +235,12 @@ INDEX 		     session_idx (session)
 fn initCheckPrekeysTable(conn: &Armconn) {
     conn.lock().unwrap().execute(
         "CREATE TABLE IF NOT EXISTS cbox.prekey (
-botID    	UUID NOT NULL PRIMARY KEY,
-prekey      INT,
+prekey      INT NOT NULL PRIMARY KEY,
+botID    	UUID,
 prekeyValue BYTES,
 createdAt   TIMESTAMP Default  now(),
 updatedAt   TIMESTAMP Default  now(),
-INDEX 		prekey_idx (prekey)
+INDEX 		botID_idx (botID)
 ) ;",&[],
     ).unwrap();
 }
