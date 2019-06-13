@@ -10,5 +10,5 @@ license      = "GPL-3.0"
 [dependencies]
 byteorder  = ">= 0.5.1"
 cbor-codec = ">= 0.7.0"
-proteus    = { git = "https://github.com/wireapp/proteus", branch = "develop" }
+proteus    = { git = "https://github.com/wireapp/proteus", tag = "v1.0.1" }
 
