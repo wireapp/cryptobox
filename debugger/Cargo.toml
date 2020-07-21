@@ -1,0 +1,13 @@
+[package]
+name = "cryptobox-debugger"
+version = "0.1.0"
+authors = ["Franziskus Kiefer <franziskuskiefer@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cbor-codec = ">= 0.7.0"
+proteus    = { git = "https://github.com/wireapp/proteus", branch = "franziskus/debugging" }
+# proteus    = { path = "../../proteus" }
+cryptobox = { path = "../" }
