@@ -38,6 +38,7 @@ use store::file::{FileStore, FileStoreError};
 
 // CBox /////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct CBox<S> {
     ident: Arc<IdentityKeyPair>,
     store: Arc<S>
@@ -164,10 +165,11 @@ impl<S: Store> CBox<S> {
 
 // Session //////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct CBoxSession<S> {
     sident:  String,
     store:   ReadOnlyStore<S>,
-    session: Session<Arc<IdentityKeyPair>>
+    pub session: Session<Arc<IdentityKeyPair>>
 }
 
 impl<S: Store> CBoxSession<S> {
@@ -200,6 +202,7 @@ impl<S: Store> CBoxSession<S> {
 
 // ReadOnlyStore ////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 struct ReadOnlyStore<S> {
     store:   Arc<S>,
     removed: Vec<PreKeyId>
