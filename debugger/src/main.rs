@@ -1,12 +1,20 @@
-use std::{env, fs, fs::File, fs::ReadDir, io::Read, num::ParseIntError, path::Path};
+use std::{
+    env, fs, fs::File, fs::ReadDir, io::BufRead, io::BufReader, io::Read, num::ParseIntError,
+    path::Path,
+};
 
-use cryptobox::{store::Store, CBox, CBoxSession};
+use cryptobox::{store::Store, CBox, CBoxError, CBoxSession};
 use proteus::message::{Envelope, Message};
+
+#[derive(Copy, Debug, Clone)]
+enum Error {
+    NoSession,
+}
 
 fn hex_str_to_bytes(val: &str) -> Vec<u8> {
     let b: Result<Vec<u8>, ParseIntError> = (0..val.len())
         .step_by(2)
-        .map(|i| u8::from_str_radix(&val[i..i + 2], 16))
+        .map(|i| u8::from_str_radix(&val[i..std::cmp::min(val.len(), i + 2)], 16))
         .collect();
     b.expect("Error parsing hex string")
 }
@@ -35,14 +43,12 @@ fn get_sessions_dir(path: &str) -> ReadDir {
     fs::read_dir(Path::new(path).join("sessions")).unwrap()
 }
 
-fn decrypt(path: &str, data: &str) {
-    println!("Opening Cryptobox {}\n ...", path);
-    let cbox = match CBox::file_open(&Path::new(path)) {
-        Ok(c) => c,
-        Err(e) => panic!("Couldn't load cryptobox session."),
-    };
-
-    let data_bytes = hex_str_to_bytes(data);
+fn get_cbox_session<S: Store + std::fmt::Debug>(
+    cbox: &CBox<S>,
+    path: &str,
+    data_bytes: &[u8],
+    write: bool,
+) -> Result<CBoxSession<S>, Error> {
     println!("Parsing message ...");
     let env = match Envelope::deserialise(&data_bytes) {
         Ok(v) => v,
@@ -52,31 +58,108 @@ fn decrypt(path: &str, data: &str) {
         Message::Plain(m) => m.session_tag,
         Message::Keyed(_) => {
             panic!("I can only handle plain messages at the moment. Got a PreKeyMessage.")
+            // println!("This is a PreKeyMessage. I'll try to create a session from it.");
+            // cbox.session_from_message("");
         }
     };
 
+    println!("Looking for session to decrypt the message ...");
     let sessions_dir = get_sessions_dir(&path);
     for session in sessions_dir {
         let session_path = session.unwrap().path();
         let session_id = session_path.file_stem().unwrap().to_str().unwrap();
-        let mut session = get_session(&cbox, session_id);
+        let session = get_session(&cbox, session_id);
         if session.session.session_tag != msg_session_tag {
             // println!("This is not the session you're looking for ...");
             continue;
         }
         println!("Found session for message {:?} ...", msg_session_tag);
         println!("Opening session {:?} ...", session_id);
-        println!("Loaded session: {:?}", session);
-        println!("Trying to decrypt ...");
-        let msg = match session.decrypt(&data_bytes) {
-            Ok(r) => r,
-            Err(e) => {
-                println!("Failed to decrypt :(\n{:?}", e);
-                break;
-            }
-        };
-        println!("Decrypted {:?}", msg);
+        // println!("Loaded session: {:?}", session);
+        return Ok(session);
     }
+    println!("I didn't find a session for this message to decrypt :(");
+    Err(Error::NoSession)
+}
+
+fn decrypt_multiple(path: &str, data: &[Vec<u8>], write: bool) {
+    println!("Opening Cryptobox {}\n ...", path);
+    let cbox = match CBox::file_open(&Path::new(path)) {
+        Ok(c) => c,
+        Err(e) => panic!("Couldn't load cryptobox session."),
+    };
+
+    // Take the session of the first message in data.
+    let mut session1 = get_cbox_session(&cbox, path, &data[0], write).unwrap();
+    for bytes in data.iter() {
+        println!("\n --- Decrypting next dump ... ---");
+        // println!("Session to decrypt: {:?}", session);
+        match decrypt_with_cbox_session(&cbox, &mut session1, path, &bytes, false) {
+            Ok(_) => continue,
+            Err(e) => {
+                // Decryption didn't work. We might use the wrong session.
+                let session2 = match get_cbox_session(&cbox, path, &bytes, write) {
+                    Ok(s) => s,
+                    Err(_) => continue,
+                };
+                if session2.session.session_tag != session1.session.session_tag {
+                    println!("We should've used a different session");
+                } else {
+                    println!("Decryption didn't work because we didn't have the right keys in the session.");
+                }
+            }
+        }
+    }
+}
+
+fn decrypt_with_cbox_session<S: Store + std::fmt::Debug>(
+    cbox: &CBox<S>,
+    cbox_session: &mut CBoxSession<S>,
+    path: &str,
+    data_bytes: &[u8],
+    write: bool,
+) -> Result<(), CBoxError<S>> {
+    let msg = match cbox_session.decrypt(&data_bytes) {
+        Ok(r) => r,
+        Err(e) => {
+            println!("Failed to decrypt :(\n{:?}", e);
+            return Err(e);
+        }
+    };
+    println!("Decrypted {:?}", msg);
+    unsafe {
+        println!(
+            "Decrypted string: {:?}",
+            std::str::from_utf8_unchecked(&msg)
+        );
+    }
+    if write {
+        // Write the updated session back.
+        // Note that you can't decrypt the same message again after this.
+        let _ = cbox.session_save(cbox_session);
+    }
+    Ok(())
+}
+
+fn decrypt_with_cbox<S: Store + std::fmt::Debug>(
+    cbox: &CBox<S>,
+    path: &str,
+    data_bytes: &[u8],
+    write: bool,
+) {
+    let mut session = get_cbox_session(cbox, path, data_bytes, write).unwrap();
+    decrypt_with_cbox_session(cbox, &mut session, path, data_bytes, write);
+}
+
+fn decrypt(path: &str, data: &str, write: bool) {
+    println!("Opening Cryptobox {}\n ...", path);
+    let cbox = match CBox::file_open(&Path::new(path)) {
+        Ok(c) => c,
+        Err(e) => panic!("Couldn't load cryptobox session."),
+    };
+
+    let data_bytes = hex_str_to_bytes(data);
+    decrypt_with_cbox(&cbox, path, &data_bytes, write);
 }
 
 fn print_cbox(path: &str) {
@@ -93,14 +176,23 @@ fn print_cbox(path: &str) {
         let session_path = session.unwrap().path();
         let session_id = session_path.file_stem().unwrap().to_str().unwrap();
         println!("Trying to open session {:?} ...", session_id);
-        let mut session = get_session(&cbox, session_id);
+        let session = get_session(&cbox, session_id);
         println!("Loaded session: {:?}", session);
         println!("\n ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----");
     }
 }
 
+fn read_dumps(file: &str) -> Vec<Vec<u8>> {
+    let file = fs::File::open(file).unwrap();
+    let mut out = Vec::<Vec<u8>>::new();
+    for line in BufReader::new(file).lines() {
+        let line = line.unwrap();
+        out.push(hex_str_to_bytes(&line));
+    }
+    out
+}
+
 fn main() {
-    let args: Vec<_> = env::args().collect();
     let cmd = std::env::args()
         .nth(1)
         .expect("Usage: cargo run prettify|decrypt|pretty_cbox <input ...>");
@@ -115,7 +207,18 @@ fn main() {
             let msg = std::env::args()
                 .nth(3)
                 .expect("Please provide the serialised data as input on the cli.");
-            decrypt(&first_arg, &msg);
+            let write = std::env::args().nth(4).unwrap_or_default();
+            let write = write == "write";
+            decrypt(&first_arg, &msg, write);
+        }
+        "decrypt_file" => {
+            let dumps = std::env::args()
+                .nth(3)
+                .expect("Please provide a file on the cli with the dumps.");
+            let write = std::env::args().nth(4).unwrap_or_default();
+            let write = write == "write";
+            let dumps = read_dumps(&dumps);
+            decrypt_multiple(&first_arg, &dumps, write);
         }
         _ => panic!("Unknown command {:?}", cmd),
     }
