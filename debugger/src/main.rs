@@ -89,26 +89,16 @@ fn decrypt_multiple(path: &str, data: &[Vec<u8>], write: bool) {
         Err(e) => panic!("Couldn't load cryptobox session."),
     };
 
-    // Take the session of the first message in data.
-    let mut session1 = get_cbox_session(&cbox, path, &data[0], write).unwrap();
     for bytes in data.iter() {
         println!("\n --- Decrypting next dump ... ---");
-        // println!("Session to decrypt: {:?}", session);
-        match decrypt_with_cbox_session(&cbox, &mut session1, path, &bytes, false) {
-            Ok(_) => continue,
+        let mut session = match get_cbox_session(&cbox, path, &bytes, write) {
+            Ok(s) => s,
             Err(e) => {
-                // Decryption didn't work. We might use the wrong session.
-                let session2 = match get_cbox_session(&cbox, path, &bytes, write) {
-                    Ok(s) => s,
-                    Err(_) => continue,
-                };
-                if session2.session.session_tag != session1.session.session_tag {
-                    println!("We should've used a different session");
-                } else {
-                    println!("Decryption didn't work because we didn't have the right keys in the session.");
-                }
+                println!("{:?}", e);
+                continue;
             }
-        }
+        };
+        let _ = decrypt_with_cbox_session(&cbox, &mut session, path, &bytes, false);
     }
 }
 
@@ -127,12 +117,12 @@ fn decrypt_with_cbox_session<S: Store + std::fmt::Debug>(
         }
     };
     println!("Decrypted {:?}", msg);
-    unsafe {
-        println!(
-            "Decrypted string: {:?}",
-            std::str::from_utf8_unchecked(&msg)
-        );
-    }
+    // unsafe {
+    //     println!(
+    //         "Decrypted string: {:?}",
+    //         std::str::from_utf8_unchecked(&msg)
+    //     );
+    // }
     if write {
         // Write the updated session back.
         // Note that you can't decrypt the same message again after this.
@@ -195,7 +185,7 @@ fn read_dumps(file: &str) -> Vec<Vec<u8>> {
 fn main() {
     let cmd = std::env::args()
         .nth(1)
-        .expect("Usage: cargo run prettify|decrypt|pretty_cbox <input ...>");
+        .expect("Usage: cargo run prettify|decrypt|pretty_cbox|decrypt_file <input ...>");
     let first_arg = std::env::args()
         .nth(2)
         .expect("I require at least one argument!");
